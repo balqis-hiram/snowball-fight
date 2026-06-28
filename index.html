@@ -213,7 +213,6 @@ const SPEED_DROP_CHANCE = 0.15;
 const HEAL_AMOUNT = 25;
 const ITEM_LIFETIME = 600;
 const TREE_HIT_RADIUS = 14;
-const TREE_AVOID_RADIUS = 40; // how far enemies steer from trees
 
 const SKY_TOP = '#0d1f3c', SKY_BOT = '#1a3a5c', GROUND = '#d0e8f5';
 const TREE_GREEN = '#1b5e3b', TREE_DARK = '#134a2e';
@@ -238,24 +237,73 @@ function hitsTree(bx,by,br) {
   return false;
 }
 
-// ─── Enemy steering: avoid trees ─────────────────────
-function steerAroundTrees(ex, ey, desiredDx, desiredDy, speed) {
-  let ax = 0, ay = 0;
+// ─── Enemy steering: proper tree avoidance ───────────
+// Ray-cast from enemy toward target; if a tree blocks the path,
+// steer tangentially around it. Also push away from very close trees.
+function steerAroundTrees(ex, ey, targetX, targetY, speed) {
+  const goalDx = targetX - ex, goalDy = targetY - ey;
+  const goalDist = Math.hypot(goalDx, goalDy);
+  if (goalDist < 1) return { dx: 0, dy: 0 };
+  const goalNx = goalDx / goalDist, goalNy = goalDy / goalDist;
+  const clearance = TREE_HIT_RADIUS + 18; // how wide to steer around
+
+  // 1) Find closest tree that blocks the line enemy→target
+  let blocker = null, blockerDist = Infinity;
+  for (const t of trees) {
+    const tx = t.x, ty = t.y - t.size * 0.1;
+    const dToTree = dist({x:ex,y:ey},{x:tx,y:ty});
+    if (dToTree > 180 || dToTree < 1) continue;
+    // dot = projection of (tree-enemy) onto goal direction
+    const dot = (tx-ex)*goalNx + (ty-ey)*goalNy;
+    if (dot < 0 || dot > goalDist) continue; // tree is behind or past target
+    // cross = perpendicular distance from tree center to the ray
+    const cross = Math.abs((tx-ex)*goalNy - (ty-ey)*goalNx);
+    if (cross < clearance && dToTree < blockerDist) {
+      blocker = { x:tx, y:ty, d:dToTree, cross:cross };
+      blockerDist = dToTree;
+    }
+  }
+
+  // 2) Close-range repulsion (prevents clipping into trees)
+  let repX = 0, repY = 0;
   for (const t of trees) {
     const tx = t.x, ty = t.y - t.size * 0.1;
     const d = dist({x:ex,y:ey},{x:tx,y:ty});
-    if (d < TREE_AVOID_RADIUS && d > 1) {
-      // Repulsion force inversely proportional to distance
-      const force = (TREE_AVOID_RADIUS - d) / TREE_AVOID_RADIUS;
-      ax += (ex - tx) / d * force * 2.5;
-      ay += (ey - ty) / d * force * 2.5;
+    if (d < 30 && d > 1) {
+      const f = (30 - d) / 30;
+      repX += (ex - tx) / d * f * 1.5;
+      repY += (ey - ty) / d * f * 1.5;
     }
   }
-  let fx = desiredDx + ax;
-  let fy = desiredDy + ay;
+
+  if (!blocker) {
+    // No blocking tree — go straight with minor repulsion
+    let fx = goalNx * speed + repX;
+    let fy = goalNy * speed + repY;
+    const m = Math.hypot(fx, fy);
+    return m > 0 ? { dx: fx/m*speed, dy: fy/m*speed } : { dx: 0, dy: 0 };
+  }
+
+  // 3) Steer around the blocking tree
+  // Two tangent points: left and right of tree
+  const toTreeAng = Math.atan2(blocker.y - ey, blocker.x - ex);
+  const leftAng  = toTreeAng - Math.PI / 2;
+  const rightAng = toTreeAng + Math.PI / 2;
+
+  // Pick the side more aligned with the ultimate goal
+  const goalAng = Math.atan2(goalDy, goalDx);
+  const lDot = Math.cos(leftAng)*goalNx + Math.sin(leftAng)*goalNy;
+  const rDot = Math.cos(rightAng)*goalNx + Math.sin(rightAng)*goalNy;
+  const steerAng = lDot > rDot ? leftAng : rightAng;
+
+  // Blend strength: closer to tree = steer harder
+  const urgency = Math.min(1, Math.max(0.3, 1 - blockerDist / 120));
+
+  const steerNx = Math.cos(steerAng), steerNy = Math.sin(steerAng);
+  let fx = goalNx * (1-urgency) + steerNx * urgency + repX;
+  let fy = goalNy * (1-urgency) + steerNy * urgency + repY;
   const m = Math.hypot(fx, fy);
-  if (m > 0) { fx = fx/m*speed; fy = fy/m*speed; }
-  return { dx: fx, dy: fy };
+  return m > 0 ? { dx: fx/m*speed, dy: fy/m*speed } : { dx: 0, dy: 0 };
 }
 
 function getChargeTime() {
@@ -372,14 +420,14 @@ function update() {
     }
 
     if (e.state==='approach' && d>150) {
-      const desired = { dx: Math.cos(a)*e.speed, dy: Math.sin(a)*e.speed };
-      const steered = steerAroundTrees(e.x, e.y, desired.dx, desired.dy, e.speed);
+      const steered = steerAroundTrees(e.x, e.y, player.x, player.y, e.speed);
       e.x += steered.dx; e.y += steered.dy;
       enemyMoving=true;
     } else if (e.state==='strafe') {
       const sa=a+Math.PI/2*e.strafeDir;
-      const desired = { dx: Math.cos(sa)*e.speed*0.8, dy: Math.sin(sa)*e.speed*0.8 };
-      const steered = steerAroundTrees(e.x, e.y, desired.dx, desired.dy, e.speed*0.8);
+      const strafeTX = e.x + Math.cos(sa) * 100;
+      const strafeTY = e.y + Math.sin(sa) * 100;
+      const steered = steerAroundTrees(e.x, e.y, strafeTX, strafeTY, e.speed*0.8);
       e.x += steered.dx; e.y += steered.dy;
       enemyMoving=true;
     }
