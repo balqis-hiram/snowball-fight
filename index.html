@@ -212,7 +212,6 @@ const HEAL_DROP_CHANCE = 0.3;
 const SPEED_DROP_CHANCE = 0.15;
 const HEAL_AMOUNT = 25;
 const ITEM_LIFETIME = 600;
-const TREE_HIT_RADIUS = 22; // match visual foliage width
 
 const SKY_TOP = '#0d1f3c', SKY_BOT = '#1a3a5c', GROUND = '#d0e8f5';
 const TREE_GREEN = '#1b5e3b', TREE_DARK = '#134a2e';
@@ -228,33 +227,42 @@ function spawnParticles(x,y,color,count) {
   for (let i=0;i<count;i++) particles.push({ x,y, vx:rand(-3,3), vy:rand(-3,3), r:rand(2,5), color, life:rand(15,35) });
 }
 
-// Swept collision: checks entire path from (bx-vx,by-vy) to (bx,by)
+// Swept collision with size-scaled, multi-point tree hitboxes
 function hitsTree(bx,by,br,vx,vy) {
   vx=vx||0; vy=vy||0;
-  const hitR = TREE_HIT_RADIUS + br;
-  const hitR2 = hitR * hitR;
-  const ax=bx-vx, ay=by-vy; // start of segment
+  const ax=bx-vx, ay=by-vy;
   const segLen2 = vx*vx + vy*vy;
+
   for (const t of trees) {
-    const tx=t.x, ty=t.y-t.size*0.1;
-    if (segLen2 < 0.1) {
-      // Stationary — point check
-      const dx=bx-tx, dy=by-ty;
-      if (dx*dx+dy*dy < hitR2) { spawnParticles(bx,by,'#fff',6); return true; }
-      continue;
-    }
-    // Closest point on segment to tree center
-    const fx=ax-tx, fy=ay-ty;
-    let tp = -(fx*vx + fy*vy) / segLen2;
-    tp = Math.max(0, Math.min(1, tp));
-    const cx=ax+tp*vx, cy=ay+tp*vy;
-    const dx2=(cx-tx)*(cx-tx), dy2=(cy-ty)*(cy-ty);
-    if (dx2+dy2 < hitR2) {
-      spawnParticles(cx,cy,'#fff',6); return true;
+    // Two collision circles per tree: trunk area + upper foliage
+    const s = t.size;
+    const circles = [
+      { cx: t.x, cy: t.y - s*0.1,  r: s*0.45 },  // lower trunk/foliage
+      { cx: t.x, cy: t.y - s*0.55, r: s*0.35 },  // upper foliage
+    ];
+    for (const c of circles) {
+      const hitR = c.r + br;
+      const hitR2 = hitR * hitR;
+      if (segLen2 < 0.1) {
+        const dx=bx-c.cx, dy=by-c.cy;
+        if (dx*dx+dy*dy < hitR2) { spawnParticles(bx,by,'#fff',6); return true; }
+        continue;
+      }
+      const fx=ax-c.cx, fy=ay-c.cy;
+      let tp = -(fx*vx + fy*vy) / segLen2;
+      tp = Math.max(0, Math.min(1, tp));
+      const px=ax+tp*vx, py=ay+tp*vy;
+      const dx2=(px-c.cx)*(px-c.cx), dy2=(py-c.cy)*(py-c.cy);
+      if (dx2+dy2 < hitR2) {
+        spawnParticles(px,py,'#fff',6); return true;
+      }
     }
   }
   return false;
 }
+
+// Tree collision radius for a given tree (used by other systems)
+function treeHitR(t) { return t.size * 0.45; }
 
 // ─── Line-of-sight check ─────────────────────────────
 // Returns the blocking tree if LOS is blocked, null if clear
@@ -263,16 +271,16 @@ function losBlocked(ax, ay, bx, by) {
   const len = Math.hypot(dx, dy);
   if (len < 1) return null;
   const nx = dx/len, ny = dy/len;
-  const checkR = TREE_HIT_RADIUS + 10;
   let closest = null, closestD = Infinity;
   for (const t of trees) {
     const tx = t.x, ty = t.y - t.size * 0.1;
+    const checkR = treeHitR(t) + 5;
     const dot = (tx-ax)*nx + (ty-ay)*ny;
-    if (dot < 10 || dot > len - 10) continue; // behind or past target
+    if (dot < 10 || dot > len - 10) continue;
     const cross = Math.abs((tx-ax)*ny - (ty-ay)*nx);
     if (cross < checkR) {
       const d = dist({x:ax,y:ay},{x:tx,y:ty});
-      if (d < closestD) { closest = {x:tx,y:ty}; closestD = d; }
+      if (d < closestD) { closest = {x:tx,y:ty,size:t.size}; closestD = d; }
     }
   }
   return closest;
@@ -284,13 +292,13 @@ function steerAroundTrees(ex, ey, targetX, targetY, speed) {
   const goalDist = Math.hypot(goalDx, goalDy);
   if (goalDist < 1) return { dx: 0, dy: 0 };
   const goalNx = goalDx / goalDist, goalNy = goalDy / goalDist;
-  const clearance = TREE_HIT_RADIUS + 18;
 
   let blocker = null, blockerDist = Infinity;
   for (const t of trees) {
     const tx = t.x, ty = t.y - t.size * 0.1;
+    const clearance = treeHitR(t) + 12;
     const dToTree = dist({x:ex,y:ey},{x:tx,y:ty});
-    if (dToTree > 180 || dToTree < 1) continue;
+    if (dToTree > 200 || dToTree < 1) continue;
     const dot = (tx-ex)*goalNx + (ty-ey)*goalNy;
     if (dot < 0 || dot > goalDist) continue;
     const cross = Math.abs((tx-ex)*goalNy - (ty-ey)*goalNx);
@@ -302,9 +310,10 @@ function steerAroundTrees(ex, ey, targetX, targetY, speed) {
   let repX = 0, repY = 0;
   for (const t of trees) {
     const tx = t.x, ty = t.y - t.size * 0.1;
+    const repR = treeHitR(t) + 10;
     const d = dist({x:ex,y:ey},{x:tx,y:ty});
-    if (d < 40 && d > 1) {
-      const f = (40 - d) / 40;
+    if (d < repR && d > 1) {
+      const f = (repR - d) / repR;
       repX += (ex - tx) / d * f * 3;
       repY += (ey - ty) / d * f * 3;
     }
@@ -365,7 +374,7 @@ function spawnWave() {
       var tooClose = dist({x:ex,y:ey},player)<300;
       var inTree = false;
       for (const t of trees) {
-        if (dist({x:ex,y:ey},{x:t.x,y:t.y-t.size*0.1}) < 35) { inTree=true; break; }
+        if (dist({x:ex,y:ey},{x:t.x,y:t.y-t.size*0.1}) < treeHitR(t)+10) { inTree=true; break; }
       }
     } while ((tooClose || inTree) && att<100);
     enemies.push({ x:ex, y:ey, r:14, hp:1+Math.floor(wave/3), maxHp:1+Math.floor(wave/3),
@@ -532,8 +541,9 @@ function update() {
     if (!enemyMoving) {
       for (const t of trees) {
         const tx=t.x, ty=t.y-t.size*0.1;
+        const pushR = treeHitR(t) + 5;
         const d2=dist({x:e.x,y:e.y},{x:tx,y:ty});
-        if (d2<25 && d2>1) { e.x+=(e.x-tx)/d2*2; e.y+=(e.y-ty)/d2*2; }
+        if (d2<pushR && d2>1) { e.x+=(e.x-tx)/d2*2; e.y+=(e.y-ty)/d2*2; }
       }
     }
 
@@ -550,7 +560,7 @@ function update() {
         if (e.stuckCount >= 3) {
           let nx,ny,a2=0;
           do { nx=rand(60,WORLD_W-60); ny=rand(60,WORLD_H-60); a2++; }
-          while ((dist({x:nx,y:ny},player)<200 || trees.some(t=>dist({x:nx,y:ny},{x:t.x,y:t.y})<40)) && a2<50);
+          while ((dist({x:nx,y:ny},player)<200 || trees.some(t=>dist({x:nx,y:ny},{x:t.x,y:t.y})<treeHitR(t)+15)) && a2<50);
           e.x=nx; e.y=ny; e.stuckCount=0; e.state='approach'; e.stateTimer=rand(60,120);
           spawnParticles(nx,ny,'#fff',8);
         }
