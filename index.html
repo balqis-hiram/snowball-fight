@@ -537,34 +537,38 @@ function update() {
       enemyMoving=true;
     }
 
-    // Even when stationary, push out of trees
+    // Even when stationary, gently push out of trees (capped force)
     if (!enemyMoving) {
+      let pushX=0, pushY=0;
       for (const t of trees) {
         const tx=t.x, ty=t.y-t.size*0.1;
         const pushR = treeHitR(t) + 5;
         const d2=dist({x:e.x,y:e.y},{x:tx,y:ty});
-        if (d2<pushR && d2>1) { e.x+=(e.x-tx)/d2*2; e.y+=(e.y-ty)/d2*2; }
+        if (d2<pushR && d2>1) { pushX+=(e.x-tx)/d2; pushY+=(e.y-ty)/d2; }
       }
+      const pm=Math.hypot(pushX,pushY);
+      if (pm>0) { e.x+=pushX/pm*1.5; e.y+=pushY/pm*1.5; } // capped at 1.5px/frame
     }
 
     e.x=Math.max(e.r,Math.min(WORLD_W-e.r,e.x));
     e.y=Math.max(e.r,Math.min(WORLD_H-e.r,e.y));
 
-    // Stuck detection: every 60 frames, check if enemy moved
+    // Stuck detection: only when actively trying to move (not reload/throw)
     e.age = (e.age||0) + 1;
-    if (e.age % 60 === 0) {
-      const moved = Math.hypot(e.x-(e.lastX||e.x), e.y-(e.lastY||e.y));
-      if (moved < 3) {
-        e.stuckCount = (e.stuckCount||0) + 1;
-        // If stuck for 3+ checks (3 seconds), warp to a new spot
-        if (e.stuckCount >= 3) {
-          let nx,ny,a2=0;
-          do { nx=rand(60,WORLD_W-60); ny=rand(60,WORLD_H-60); a2++; }
-          while ((dist({x:nx,y:ny},player)<200 || trees.some(t=>dist({x:nx,y:ny},{x:t.x,y:t.y})<treeHitR(t)+15)) && a2<50);
-          e.x=nx; e.y=ny; e.stuckCount=0; e.state='approach'; e.stateTimer=rand(60,120);
-          spawnParticles(nx,ny,'#fff',8);
-        }
-      } else { e.stuckCount=0; }
+    if (e.age % 90 === 0) { // check every 1.5s
+      if (e.state==='approach' || e.state==='strafe' || e.state==='flank') {
+        const moved = Math.hypot(e.x-(e.lastX||e.x), e.y-(e.lastY||e.y));
+        if (moved < 5) {
+          e.stuckCount = (e.stuckCount||0) + 1;
+          if (e.stuckCount >= 5) { // 7.5 seconds stuck
+            let nx,ny,a2=0;
+            do { nx=rand(60,WORLD_W-60); ny=rand(60,WORLD_H-60); a2++; }
+            while ((dist({x:nx,y:ny},player)<200 || trees.some(t=>dist({x:nx,y:ny},{x:t.x,y:t.y})<treeHitR(t)+15)) && a2<50);
+            e.x=nx; e.y=ny; e.stuckCount=0; e.state='approach'; e.stateTimer=rand(60,120);
+            spawnParticles(nx,ny,'#fff',8);
+          }
+        } else { e.stuckCount=0; }
+      }
       e.lastX=e.x; e.lastY=e.y;
     }
 
