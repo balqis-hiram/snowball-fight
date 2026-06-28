@@ -269,10 +269,10 @@ function steerAroundTrees(ex, ey, targetX, targetY, speed) {
   for (const t of trees) {
     const tx = t.x, ty = t.y - t.size * 0.1;
     const d = dist({x:ex,y:ey},{x:tx,y:ty});
-    if (d < 30 && d > 1) {
-      const f = (30 - d) / 30;
-      repX += (ex - tx) / d * f * 1.5;
-      repY += (ey - ty) / d * f * 1.5;
+    if (d < 40 && d > 1) {
+      const f = (40 - d) / 40;
+      repX += (ex - tx) / d * f * 3;
+      repY += (ey - ty) / d * f * 3;
     }
   }
 
@@ -334,11 +334,19 @@ function spawnWave() {
   const count = 3+wave*2;
   for (let i=0;i<count;i++) {
     let ex,ey,att=0;
-    do { ex=rand(60,WORLD_W-60); ey=rand(60,WORLD_H-60); att++; } while (dist({x:ex,y:ey},player)<300 && att<50);
+    do {
+      ex=rand(60,WORLD_W-60); ey=rand(60,WORLD_H-60); att++;
+      // Check not too close to player AND not inside a tree
+      var tooClose = dist({x:ex,y:ey},player)<300;
+      var inTree = false;
+      for (const t of trees) {
+        if (dist({x:ex,y:ey},{x:t.x,y:t.y-t.size*0.1}) < 35) { inTree=true; break; }
+      }
+    } while ((tooClose || inTree) && att<100);
     enemies.push({ x:ex, y:ey, r:14, hp:1+Math.floor(wave/3), maxHp:1+Math.floor(wave/3),
       speed:rand(0.8,1.5+wave*0.1), cooldown:rand(40,120), facing:0,
       state:'approach', strafeDir:Math.random()>0.5?1:-1, stateTimer:rand(60,150),
-      ammo:MAX_AMMO, chargeTimer:0 });
+      ammo:MAX_AMMO, chargeTimer:0, age:0, lastX:ex, lastY:ey, stuckCount:0 });
   }
 }
 
@@ -432,8 +440,35 @@ function update() {
       enemyMoving=true;
     }
 
+    // Even when stationary, push out of trees
+    if (!enemyMoving) {
+      for (const t of trees) {
+        const tx=t.x, ty=t.y-t.size*0.1;
+        const d2=dist({x:e.x,y:e.y},{x:tx,y:ty});
+        if (d2<25 && d2>1) { e.x+=(e.x-tx)/d2*2; e.y+=(e.y-ty)/d2*2; }
+      }
+    }
+
     e.x=Math.max(e.r,Math.min(WORLD_W-e.r,e.x));
     e.y=Math.max(e.r,Math.min(WORLD_H-e.r,e.y));
+
+    // Stuck detection: every 60 frames, check if enemy moved
+    e.age = (e.age||0) + 1;
+    if (e.age % 60 === 0) {
+      const moved = Math.hypot(e.x-(e.lastX||e.x), e.y-(e.lastY||e.y));
+      if (moved < 3) {
+        e.stuckCount = (e.stuckCount||0) + 1;
+        // If stuck for 3+ checks (3 seconds), warp to a new spot
+        if (e.stuckCount >= 3) {
+          let nx,ny,a2=0;
+          do { nx=rand(60,WORLD_W-60); ny=rand(60,WORLD_H-60); a2++; }
+          while ((dist({x:nx,y:ny},player)<200 || trees.some(t=>dist({x:nx,y:ny},{x:t.x,y:t.y})<40)) && a2<50);
+          e.x=nx; e.y=ny; e.stuckCount=0; e.state='approach'; e.stateTimer=rand(60,120);
+          spawnParticles(nx,ny,'#fff',8);
+        }
+      } else { e.stuckCount=0; }
+      e.lastX=e.x; e.lastY=e.y;
+    }
 
     if (!enemyMoving && e.ammo<MAX_AMMO) {
       e.chargeTimer++;
@@ -495,7 +530,12 @@ function update() {
   }
 
   // Wave
-  if (enemies.length===0) { waveTimer++; if (waveTimer>90) { wave++; waveTimer=0; spawnWave(); } }
+  if (enemies.length===0) {
+    waveTimer++;
+    if (waveTimer>90) { wave++; waveTimer=0; spawnWave(); }
+  } else {
+    waveTimer=0; // reset so countdown starts fresh when last enemy dies
+  }
 
   // ── HUD ──
   document.getElementById('hp-bar-inner').style.width=Math.max(0,player.hp/player.maxHp*100)+'%';
