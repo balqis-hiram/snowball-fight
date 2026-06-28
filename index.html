@@ -237,34 +237,49 @@ function hitsTree(bx,by,br) {
   return false;
 }
 
-// ─── Enemy steering: proper tree avoidance ───────────
-// Ray-cast from enemy toward target; if a tree blocks the path,
-// steer tangentially around it. Also push away from very close trees.
+// ─── Line-of-sight check ─────────────────────────────
+// Returns the blocking tree if LOS is blocked, null if clear
+function losBlocked(ax, ay, bx, by) {
+  const dx = bx-ax, dy = by-ay;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return null;
+  const nx = dx/len, ny = dy/len;
+  const checkR = TREE_HIT_RADIUS + 10;
+  let closest = null, closestD = Infinity;
+  for (const t of trees) {
+    const tx = t.x, ty = t.y - t.size * 0.1;
+    const dot = (tx-ax)*nx + (ty-ay)*ny;
+    if (dot < 10 || dot > len - 10) continue; // behind or past target
+    const cross = Math.abs((tx-ax)*ny - (ty-ay)*nx);
+    if (cross < checkR) {
+      const d = dist({x:ax,y:ay},{x:tx,y:ty});
+      if (d < closestD) { closest = {x:tx,y:ty}; closestD = d; }
+    }
+  }
+  return closest;
+}
+
+// ─── Enemy steering: tree avoidance ──────────────────
 function steerAroundTrees(ex, ey, targetX, targetY, speed) {
   const goalDx = targetX - ex, goalDy = targetY - ey;
   const goalDist = Math.hypot(goalDx, goalDy);
   if (goalDist < 1) return { dx: 0, dy: 0 };
   const goalNx = goalDx / goalDist, goalNy = goalDy / goalDist;
-  const clearance = TREE_HIT_RADIUS + 18; // how wide to steer around
+  const clearance = TREE_HIT_RADIUS + 18;
 
-  // 1) Find closest tree that blocks the line enemy→target
   let blocker = null, blockerDist = Infinity;
   for (const t of trees) {
     const tx = t.x, ty = t.y - t.size * 0.1;
     const dToTree = dist({x:ex,y:ey},{x:tx,y:ty});
     if (dToTree > 180 || dToTree < 1) continue;
-    // dot = projection of (tree-enemy) onto goal direction
     const dot = (tx-ex)*goalNx + (ty-ey)*goalNy;
-    if (dot < 0 || dot > goalDist) continue; // tree is behind or past target
-    // cross = perpendicular distance from tree center to the ray
+    if (dot < 0 || dot > goalDist) continue;
     const cross = Math.abs((tx-ex)*goalNy - (ty-ey)*goalNx);
     if (cross < clearance && dToTree < blockerDist) {
-      blocker = { x:tx, y:ty, d:dToTree, cross:cross };
-      blockerDist = dToTree;
+      blocker = { x:tx, y:ty, d:dToTree }; blockerDist = dToTree;
     }
   }
 
-  // 2) Close-range repulsion (prevents clipping into trees)
   let repX = 0, repY = 0;
   for (const t of trees) {
     const tx = t.x, ty = t.y - t.size * 0.1;
@@ -277,27 +292,18 @@ function steerAroundTrees(ex, ey, targetX, targetY, speed) {
   }
 
   if (!blocker) {
-    // No blocking tree — go straight with minor repulsion
-    let fx = goalNx * speed + repX;
-    let fy = goalNy * speed + repY;
+    let fx = goalNx * speed + repX, fy = goalNy * speed + repY;
     const m = Math.hypot(fx, fy);
     return m > 0 ? { dx: fx/m*speed, dy: fy/m*speed } : { dx: 0, dy: 0 };
   }
 
-  // 3) Steer around the blocking tree
-  // Two tangent points: left and right of tree
   const toTreeAng = Math.atan2(blocker.y - ey, blocker.x - ex);
   const leftAng  = toTreeAng - Math.PI / 2;
   const rightAng = toTreeAng + Math.PI / 2;
-
-  // Pick the side more aligned with the ultimate goal
-  const goalAng = Math.atan2(goalDy, goalDx);
   const lDot = Math.cos(leftAng)*goalNx + Math.sin(leftAng)*goalNy;
   const rDot = Math.cos(rightAng)*goalNx + Math.sin(rightAng)*goalNy;
   const steerAng = lDot > rDot ? leftAng : rightAng;
-
-  // Blend strength: closer to tree = steer harder
-  const urgency = Math.min(1, Math.max(0.3, 1 - blockerDist / 120));
+  const urgency = Math.min(1, Math.max(0.4, 1 - blockerDist / 100));
 
   const steerNx = Math.cos(steerAng), steerNy = Math.sin(steerAng);
   let fx = goalNx * (1-urgency) + steerNx * urgency + repX;
@@ -346,7 +352,8 @@ function spawnWave() {
     enemies.push({ x:ex, y:ey, r:14, hp:1+Math.floor(wave/3), maxHp:1+Math.floor(wave/3),
       speed:rand(0.8,1.5+wave*0.1), cooldown:rand(40,120), facing:0,
       state:'approach', strafeDir:Math.random()>0.5?1:-1, stateTimer:rand(60,150),
-      ammo:MAX_AMMO, chargeTimer:0, age:0, lastX:ex, lastY:ey, stuckCount:0 });
+      ammo:MAX_AMMO, chargeTimer:0, age:0, lastX:ex, lastY:ey, stuckCount:0,
+      flankDir:1, flankTree:null });
   }
 }
 
@@ -419,18 +426,80 @@ function update() {
     const d=dist(e,player); const a=angle(e,player);
     e.facing=a; e.stateTimer--; let enemyMoving=false;
 
+    // Check line of sight to player
+    const blocker = losBlocked(e.x, e.y, player.x, player.y);
+    const hasLOS = !blocker;
+
+    // ── State transitions ──
     if (e.stateTimer<=0) {
-      if (e.ammo<=0) { e.state='reload'; e.stateTimer=CHARGE_TIME_NORMAL; }
-      else if (e.state==='approach') { e.state=d<250?'strafe':'approach'; e.stateTimer=rand(60,120); }
-      else if (e.state==='strafe') { e.state='throw'; e.stateTimer=30; }
-      else if (e.state==='reload') { e.state='approach'; e.stateTimer=rand(80,160); }
-      else { e.state='approach'; e.stateTimer=rand(80,160); e.strafeDir*=-1; }
+      if (e.ammo<=0) {
+        e.state='reload'; e.stateTimer=CHARGE_TIME_NORMAL;
+      } else if (!hasLOS) {
+        // Can't see player → flank around the blocking tree
+        e.state='flank'; e.stateTimer=rand(90,180);
+        // Pick flank direction: which side of the blocker is shorter to player?
+        const toBlocker = Math.atan2(blocker.y-e.y, blocker.x-e.x);
+        const leftTest = toBlocker - Math.PI/2;
+        const rightTest = toBlocker + Math.PI/2;
+        // Which side gets us closer to the player's angle?
+        const lScore = Math.cos(leftTest - a);
+        const rScore = Math.cos(rightTest - a);
+        e.flankDir = lScore > rScore ? -1 : 1;
+        e.flankTree = { x: blocker.x, y: blocker.y };
+      } else if (e.state==='flank' && hasLOS) {
+        // Regained LOS → approach or attack
+        e.state='approach'; e.stateTimer=rand(40,80);
+      } else if (e.state==='approach') {
+        e.state = d<250 ? 'strafe' : 'approach';
+        e.stateTimer=rand(60,120);
+      } else if (e.state==='strafe') {
+        e.state='throw'; e.stateTimer=30;
+      } else if (e.state==='reload') {
+        e.state='approach'; e.stateTimer=rand(60,120);
+      } else {
+        e.state='approach'; e.stateTimer=rand(60,120); e.strafeDir*=-1;
+      }
     }
 
-    if (e.state==='approach' && d>150) {
-      const steered = steerAroundTrees(e.x, e.y, player.x, player.y, e.speed);
-      e.x += steered.dx; e.y += steered.dy;
+    // If flanking but LOS restored mid-flank, immediately switch to approach
+    if (e.state==='flank' && hasLOS) {
+      e.state='approach'; e.stateTimer=rand(30,60);
+    }
+    // If approaching/strafing but LOS lost, switch to flank
+    if ((e.state==='approach' || e.state==='strafe') && !hasLOS && d < 300) {
+      if (blocker) {
+        e.state='flank'; e.stateTimer=rand(90,180);
+        const toBlocker = Math.atan2(blocker.y-e.y, blocker.x-e.x);
+        const lScore = Math.cos(toBlocker - Math.PI/2 - a);
+        const rScore = Math.cos(toBlocker + Math.PI/2 - a);
+        e.flankDir = lScore > rScore ? -1 : 1;
+        e.flankTree = { x: blocker.x, y: blocker.y };
+      }
+    }
+
+    // ── Movement ──
+    if (e.state==='flank' && e.flankTree) {
+      // Circle around the blocking tree to get LOS on the player
+      const toTree = Math.atan2(e.flankTree.y-e.y, e.flankTree.x-e.x);
+      const circleAng = toTree + (Math.PI/2) * e.flankDir;
+      // Also pull slightly toward player to avoid orbiting forever
+      const pullToPlayer = 0.3;
+      const mx = Math.cos(circleAng) * (1-pullToPlayer) + Math.cos(a) * pullToPlayer;
+      const my = Math.sin(circleAng) * (1-pullToPlayer) + Math.sin(a) * pullToPlayer;
+      const mm = Math.hypot(mx, my);
+      if (mm > 0) {
+        const steered = steerAroundTrees(e.x, e.y, e.x + mx/mm*100, e.y + my/mm*100, e.speed * 1.1);
+        e.x += steered.dx; e.y += steered.dy;
+      }
       enemyMoving=true;
+    } else if (e.state==='approach') {
+      // Keep approaching even when close if no LOS (handled above switches to flank)
+      // With LOS: approach until 150, without: keep going
+      if (d > 120 || !hasLOS) {
+        const steered = steerAroundTrees(e.x, e.y, player.x, player.y, e.speed);
+        e.x += steered.dx; e.y += steered.dy;
+        enemyMoving=true;
+      }
     } else if (e.state==='strafe') {
       const sa=a+Math.PI/2*e.strafeDir;
       const strafeTX = e.x + Math.cos(sa) * 100;
@@ -476,7 +545,7 @@ function update() {
     } else if (enemyMoving) { e.chargeTimer=0; }
 
     e.cooldown--;
-    if (e.cooldown<=0 && d<400 && e.ammo>0 && e.state!=='reload') {
+    if (e.cooldown<=0 && d<400 && e.ammo>0 && e.state!=='reload' && e.state!=='flank' && hasLOS) {
       enemyBalls.push({ x:e.x, y:e.y, vx:Math.cos(a)*ENEMY_SNOWBALL_SPEED, vy:Math.sin(a)*ENEMY_SNOWBALL_SPEED, r:5 });
       e.ammo--; e.chargeTimer=0;
       e.cooldown=rand(60,130-wave*3); if (e.cooldown<35) e.cooldown=35;
