@@ -29,32 +29,43 @@
 
   #hud {
     position: absolute;
-    top: 16px; left: 50%;
+    top: 12px; left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 18px;
+    gap: 10px;
     align-items: center;
+    max-width: calc(100vw - 70px);
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .hud-box {
     background: rgba(255,255,255,0.12);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 14px;
-    padding: 8px 16px;
+    border-radius: 12px;
+    padding: 6px 12px;
     color: #fff;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.5px;
     text-shadow: 0 1px 4px rgba(0,0,0,0.4);
     white-space: nowrap;
   }
 
-  .hud-box .label { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
-  .hud-box .value { font-family: 'Dela Gothic One', sans-serif; font-size: 22px; }
+  .hud-box .label { font-size: 9px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .hud-box .value { font-family: 'Dela Gothic One', sans-serif; font-size: 18px; }
+
+  @media (min-width: 600px) {
+    #hud { gap: 18px; top: 16px; max-width: none; }
+    .hud-box { padding: 8px 16px; font-size: 15px; border-radius: 14px; }
+    .hud-box .label { font-size: 10px; }
+    .hud-box .value { font-size: 22px; }
+    #hp-bar-outer { width: 140px !important; }
+  }
 
   #hp-bar-outer {
-    width: 140px; height: 14px;
+    width: 90px; height: 14px;
     background: rgba(0,0,0,0.4);
     border-radius: 7px;
     overflow: hidden;
@@ -71,13 +82,13 @@
 
   #ammo-display {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     align-items: center;
     margin-top: 2px;
   }
 
   .ammo-dot {
-    width: 14px; height: 14px;
+    width: 12px; height: 12px;
     border-radius: 50%;
     background: rgba(255,255,255,0.08);
     border: 2px solid rgba(255,255,255,0.15);
@@ -103,11 +114,11 @@
   }
 
   #charge-bar-outer {
-    width: 50px; height: 6px;
+    width: 40px; height: 5px;
     background: rgba(0,0,0,0.3);
     border-radius: 3px;
     overflow: hidden;
-    margin-left: 6px;
+    margin-left: 4px;
     opacity: 0;
     transition: opacity 0.2s;
   }
@@ -119,8 +130,68 @@
     background: linear-gradient(90deg, #8ac4ff, #c0e0ff);
     border-radius: 3px;
     width: 0%;
-    transition: width 0.05s linear;
   }
+
+  /* Pause button */
+  #pause-btn {
+    position: fixed;
+    top: 12px; right: 12px;
+    z-index: 25;
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 10px;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    transition: background 0.2s;
+    line-height: 1;
+  }
+  #pause-btn:hover { background: rgba(255,255,255,0.2); }
+
+  /* Pause overlay */
+  #pause-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(11,22,40,0.85);
+    backdrop-filter: blur(6px);
+    z-index: 22;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+
+  .pause-title {
+    font-family: 'Dela Gothic One', sans-serif;
+    font-size: 36px;
+    color: #fff;
+    margin-bottom: 32px;
+    text-shadow: 0 0 20px rgba(100,180,255,0.3);
+  }
+
+  .pause-btns { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+
+  .btn-secondary {
+    pointer-events: auto;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    padding: 14px 36px;
+    font-family: 'Dela Gothic One', sans-serif;
+    font-size: 16px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.2); }
 
   #start-screen, #game-over-screen {
     position: absolute;
@@ -136,6 +207,8 @@
 
   #start-screen {
     background: radial-gradient(ellipse at 50% 40%, #1a3a5c 0%, #0b1628 70%);
+    padding: 20px;
+    overflow-y: auto;
   }
 
   #game-over-screen {
@@ -146,16 +219,16 @@
 
   .title {
     font-family: 'Dela Gothic One', sans-serif;
-    font-size: clamp(36px, 8vw, 72px);
+    font-size: clamp(32px, 8vw, 72px);
     color: #fff;
     text-shadow: 0 0 40px rgba(100,180,255,0.4), 0 4px 12px rgba(0,0,0,0.5);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   .subtitle {
     color: rgba(255,255,255,0.5);
-    font-size: 14px;
-    margin-bottom: 40px;
+    font-size: 13px;
+    margin-bottom: 28px;
     letter-spacing: 2px;
   }
 
@@ -164,9 +237,9 @@
     background: linear-gradient(135deg, #4a9eff, #2d7ae0);
     color: #fff;
     border: none;
-    padding: 16px 48px;
+    padding: 14px 44px;
     font-family: 'Dela Gothic One', sans-serif;
-    font-size: 20px;
+    font-size: 18px;
     border-radius: 60px;
     cursor: pointer;
     box-shadow: 0 4px 24px rgba(74,158,255,0.4), 0 0 60px rgba(74,158,255,0.15);
@@ -178,12 +251,24 @@
   .btn:active { transform: scale(0.97); }
 
   .controls-info {
-    margin-top: 28px;
-    color: rgba(255,255,255,0.35);
+    margin-top: 24px;
+    color: rgba(255,255,255,0.4);
     font-size: 12px;
     text-align: center;
-    line-height: 2;
+    line-height: 1.9;
+    max-width: 360px;
   }
+
+  .controls-info .section-label {
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 10px;
+    display: block;
+  }
+
+  .controls-desktop, .controls-mobile { display: none; }
 
   .go-score {
     font-family: 'Dela Gothic One', sans-serif;
@@ -240,7 +325,6 @@
     border-radius: 50%;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    transition: none;
   }
 
   .fire-btn {
@@ -291,18 +375,41 @@
   </div>
 </div>
 
+<button id="pause-btn" title="ポーズ">⏸</button>
+
+<div id="pause-screen">
+  <div class="pause-title">⏸ ポーズ</div>
+  <div class="pause-btns">
+    <button class="btn" id="resume-btn">つづける</button>
+    <button class="btn-secondary" id="quit-btn">やめる</button>
+  </div>
+</div>
+
 <div id="start-screen">
   <div class="snow-bg" id="snow-bg"></div>
   <div class="title">⛄ 雪合戦!</div>
   <div class="subtitle">SNOWBALL FIGHT</div>
   <button class="btn" id="start-btn">ゲームスタート</button>
   <div class="controls-info">
-    矢印キー / WASD：移動<br>
-    スペースキー：最寄りの敵に雪玉を投げる<br>
-    マウスクリック：狙った方向に投げる<br>
+    <div class="controls-desktop">
+      <span class="section-label">🎮 操作</span>
+      矢印キー / WASD：移動<br>
+      スペースキー：最寄りの敵に雪玉を投げる<br>
+      マウスクリック：狙った方向に投げる<br>
+      Escキー：ポーズ
+    </div>
+    <div class="controls-mobile">
+      <span class="section-label">🎮 操作</span>
+      左のスティック：移動<br>
+      右の「投げる」ボタン：最寄りの敵に投げる<br>
+      画面タップ：タップした方向に投げる<br>
+      右上⏸ボタン：ポーズ
+    </div>
+    <span class="section-label">📋 ルール</span>
     ⚡ 雪玉は5個まで。止まると丸めて補充！<br>
     🌲 木に当たると雪玉が弾かれる！<br>
-    💚 敵を倒すと回復アイテムが出ることも！
+    💚 敵を倒すと回復アイテムが出ることも！<br>
+    👀 敵も弾数制限あり。弾切れを狙え！
   </div>
 </div>
 
@@ -344,10 +451,15 @@ for (let i = 0; i < 40; i++) {
 }
 
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-if (isMobile) document.getElementById('mobile-controls').style.display = 'block';
+if (isMobile) {
+  document.getElementById('mobile-controls').style.display = 'block';
+  document.querySelector('.controls-mobile').style.display = 'block';
+} else {
+  document.querySelector('.controls-desktop').style.display = 'block';
+}
 
 // ─── Game State ───────────────────────────────────────
-let state = 'menu';
+let state = 'menu'; // menu, playing, paused, gameover
 let player, enemies, snowballs, enemyBalls, particles, trees, items, score, wave, waveTimer;
 let keys = {};
 let mouseX = 0, mouseY = 0;
@@ -360,11 +472,11 @@ const PLAYER_SPEED = 3.2;
 const SNOWBALL_SPEED = 7;
 const ENEMY_SNOWBALL_SPEED = 4;
 const MAX_AMMO = 5;
-const CHARGE_TIME = 120; // 2s at 60fps
+const CHARGE_TIME = 120;
 const HEAL_DROP_CHANCE = 0.3;
 const HEAL_AMOUNT = 25;
 const ITEM_LIFETIME = 600;
-const TREE_HIT_RADIUS = 14; // collision radius for trees
+const TREE_HIT_RADIUS = 14;
 
 const SKY_TOP = '#0d1f3c';
 const SKY_BOT = '#1a3a5c';
@@ -390,7 +502,6 @@ function spawnParticles(x, y, color, count) {
   }
 }
 
-// Check if snowball hits any tree trunk — returns true if blocked
 function hitsTree(bx, by, br) {
   for (const t of trees) {
     if (dist({ x: bx, y: by }, { x: t.x, y: t.y - t.size * 0.1 }) < TREE_HIT_RADIUS + br) {
@@ -401,9 +512,12 @@ function hitsTree(bx, by, br) {
   return false;
 }
 
+// ─── Tree generation with clusters ───────────────────
 function generateTrees() {
   trees = [];
-  for (let i = 0; i < 60; i++) {
+
+  // Scattered individual trees
+  for (let i = 0; i < 35; i++) {
     trees.push({
       x: rand(50, WORLD_W - 50),
       y: rand(50, WORLD_H - 50),
@@ -411,6 +525,23 @@ function generateTrees() {
       shade: Math.random()
     });
   }
+
+  // Clusters: 8-12 groups of 3-6 trees close together
+  const clusterCount = Math.floor(rand(8, 13));
+  for (let c = 0; c < clusterCount; c++) {
+    const cx = rand(120, WORLD_W - 120);
+    const cy = rand(120, WORLD_H - 120);
+    const treeCount = Math.floor(rand(3, 7));
+    for (let t = 0; t < treeCount; t++) {
+      trees.push({
+        x: cx + rand(-50, 50),
+        y: cy + rand(-40, 40),
+        size: rand(18, 40),
+        shade: Math.random()
+      });
+    }
+  }
+
   trees.sort((a, b) => a.y - b.y);
 }
 
@@ -436,11 +567,12 @@ function initGame() {
 function spawnWave() {
   const count = 3 + wave * 2;
   for (let i = 0; i < count; i++) {
-    let ex, ey;
+    let ex, ey, attempts = 0;
     do {
       ex = rand(60, WORLD_W - 60);
       ey = rand(60, WORLD_H - 60);
-    } while (dist({ x: ex, y: ey }, player) < 300);
+      attempts++;
+    } while (dist({ x: ex, y: ey }, player) < 300 && attempts < 50);
 
     enemies.push({
       x: ex, y: ey, r: 14,
@@ -457,6 +589,31 @@ function spawnWave() {
     });
   }
 }
+
+// ─── Pause ────────────────────────────────────────────
+function togglePause() {
+  if (state === 'playing') {
+    state = 'paused';
+    document.getElementById('pause-screen').style.display = 'flex';
+  } else if (state === 'paused') {
+    state = 'playing';
+    document.getElementById('pause-screen').style.display = 'none';
+  }
+}
+
+document.getElementById('pause-btn').addEventListener('click', togglePause);
+document.getElementById('resume-btn').addEventListener('click', () => {
+  state = 'playing';
+  document.getElementById('pause-screen').style.display = 'none';
+});
+document.getElementById('quit-btn').addEventListener('click', () => {
+  state = 'menu';
+  document.getElementById('pause-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('pause-btn').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'flex';
+  if (isMobile) document.getElementById('mobile-controls').style.display = 'none';
+});
 
 // ─── Update ───────────────────────────────────────────
 function update() {
@@ -487,7 +644,6 @@ function update() {
   if (player.cooldown > 0) player.cooldown--;
   if (player.invuln > 0) player.invuln--;
 
-  // Player ammo recharge (standing still only)
   if (!isMoving && player.ammo < MAX_AMMO) {
     player.chargeTimer++;
     if (player.chargeTimer >= CHARGE_TIME) {
@@ -501,11 +657,10 @@ function update() {
 
   if (keys['Space']) fireAtNearest();
 
-  // Camera
   cameraX = lerp(cameraX, player.x - canvas.width / 2, 0.08);
   cameraY = lerp(cameraY, player.y - canvas.height / 2, 0.08);
 
-  // Items pickup
+  // Items
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
     it.life--;
@@ -519,19 +674,16 @@ function update() {
     }
   }
 
-  // ── Enemies AI ──
+  // Enemies
   for (const e of enemies) {
     const d = dist(e, player);
     const a = angle(e, player);
     e.facing = a;
     e.stateTimer--;
-
-    // Is this enemy currently moving?
     let enemyMoving = false;
 
     if (e.stateTimer <= 0) {
       if (e.ammo <= 0) {
-        // Out of ammo → must stop and reload
         e.state = 'reload';
         e.stateTimer = CHARGE_TIME;
       } else if (e.state === 'approach') {
@@ -541,7 +693,6 @@ function update() {
         e.state = 'throw';
         e.stateTimer = 30;
       } else if (e.state === 'reload') {
-        // Done reloading
         e.state = 'approach';
         e.stateTimer = rand(80, 160);
       } else {
@@ -565,7 +716,6 @@ function update() {
     e.x = Math.max(e.r, Math.min(WORLD_W - e.r, e.x));
     e.y = Math.max(e.r, Math.min(WORLD_H - e.r, e.y));
 
-    // Enemy ammo recharge (standing still only)
     if (!enemyMoving && e.ammo < MAX_AMMO) {
       e.chargeTimer++;
       if (e.chargeTimer >= CHARGE_TIME) {
@@ -577,7 +727,6 @@ function update() {
       e.chargeTimer = 0;
     }
 
-    // Enemy throws
     e.cooldown--;
     if (e.cooldown <= 0 && d < 400 && e.ammo > 0 && e.state !== 'reload') {
       enemyBalls.push({
@@ -593,31 +742,21 @@ function update() {
     }
   }
 
-  // ── Player snowballs ──
+  // Player snowballs
   for (let i = snowballs.length - 1; i >= 0; i--) {
     const b = snowballs[i];
-    b.x += b.vx;
-    b.y += b.vy;
-    b.life--;
-
+    b.x += b.vx; b.y += b.vy; b.life--;
     if (b.life <= 0 || b.x < 0 || b.x > WORLD_W || b.y < 0 || b.y > WORLD_H) {
       spawnParticles(b.x, b.y, '#fff', 4);
-      snowballs.splice(i, 1);
-      continue;
+      snowballs.splice(i, 1); continue;
     }
-
-    // Tree collision
-    if (hitsTree(b.x, b.y, b.r)) {
-      snowballs.splice(i, 1);
-      continue;
-    }
+    if (hitsTree(b.x, b.y, b.r)) { snowballs.splice(i, 1); continue; }
 
     for (let j = enemies.length - 1; j >= 0; j--) {
       if (dist(b, enemies[j]) < enemies[j].r + b.r) {
         enemies[j].hp--;
         spawnParticles(b.x, b.y, '#fff', 8);
         snowballs.splice(i, 1);
-
         if (enemies[j].hp <= 0) {
           const ex = enemies[j].x, ey = enemies[j].y;
           spawnParticles(ex, ey, ENEMY_COLOR, 15);
@@ -633,22 +772,14 @@ function update() {
     }
   }
 
-  // ── Enemy snowballs ──
+  // Enemy snowballs
   for (let i = enemyBalls.length - 1; i >= 0; i--) {
     const b = enemyBalls[i];
-    b.x += b.vx;
-    b.y += b.vy;
-
+    b.x += b.vx; b.y += b.vy;
     if (b.x < 0 || b.x > WORLD_W || b.y < 0 || b.y > WORLD_H) {
-      enemyBalls.splice(i, 1);
-      continue;
+      enemyBalls.splice(i, 1); continue;
     }
-
-    // Tree collision
-    if (hitsTree(b.x, b.y, b.r)) {
-      enemyBalls.splice(i, 1);
-      continue;
-    }
+    if (hitsTree(b.x, b.y, b.r)) { enemyBalls.splice(i, 1); continue; }
 
     if (player.invuln <= 0 && dist(b, player) < player.r + b.r) {
       player.hp -= 10;
@@ -660,6 +791,7 @@ function update() {
         document.getElementById('game-over-screen').style.display = 'flex';
         document.getElementById('final-score').textContent = score;
         document.getElementById('hud').style.display = 'none';
+        document.getElementById('pause-btn').style.display = 'none';
       }
     }
   }
@@ -673,14 +805,10 @@ function update() {
     if (p.life <= 0) particles.splice(i, 1);
   }
 
-  // Wave check
+  // Wave
   if (enemies.length === 0) {
     waveTimer++;
-    if (waveTimer > 90) {
-      wave++;
-      waveTimer = 0;
-      spawnWave();
-    }
+    if (waveTimer > 90) { wave++; waveTimer = 0; spawnWave(); }
   }
 
   // HUD
@@ -691,11 +819,8 @@ function update() {
   for (let i = 0; i < MAX_AMMO; i++) {
     const dot = document.getElementById('ammo' + i);
     dot.className = 'ammo-dot';
-    if (i < player.ammo) {
-      dot.classList.add('full');
-    } else if (i === player.ammo && !isMoving && player.ammo < MAX_AMMO) {
-      dot.classList.add('charging');
-    }
+    if (i < player.ammo) dot.classList.add('full');
+    else if (i === player.ammo && !isMoving && player.ammo < MAX_AMMO) dot.classList.add('charging');
   }
 
   const chargeOuter = document.getElementById('charge-bar-outer');
@@ -711,46 +836,30 @@ function update() {
 
 // ─── Draw ─────────────────────────────────────────────
 function drawCharacter(x, y, r, color, facing, isPlayer, invuln, hpRatio, ammo, isReloading, chargeProgress) {
-  const sx = x - cameraX;
-  const sy = y - cameraY;
-
+  const sx = x - cameraX, sy = y - cameraY;
   if (invuln > 0 && Math.floor(invuln / 3) % 2 === 0) return;
 
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.12)';
   ctx.beginPath();
   ctx.ellipse(sx, sy + r + 4, r * 1.1, r * 0.35, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Body
   ctx.fillStyle = '#f0f4f8';
-  ctx.beginPath();
-  ctx.arc(sx, sy + 4, r * 0.9, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(sx, sy + 4, r * 0.9, 0, Math.PI * 2); ctx.fill();
 
-  // Head
   ctx.fillStyle = '#f8fbff';
-  ctx.beginPath();
-  ctx.arc(sx, sy - r * 0.5, r * 0.7, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(sx, sy - r * 0.5, r * 0.7, 0, Math.PI * 2); ctx.fill();
 
-  // Scarf
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(sx, sy - r * 0.1, r * 0.55, -0.3, Math.PI + 0.3);
-  ctx.stroke();
+  ctx.strokeStyle = color; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(sx, sy - r * 0.1, r * 0.55, -0.3, Math.PI + 0.3); ctx.stroke();
 
-  // Eyes
-  const eyeOff = r * 0.22;
-  const eyeY = sy - r * 0.55;
+  const eyeOff = r * 0.22, eyeY = sy - r * 0.55;
   ctx.fillStyle = '#222';
   ctx.beginPath();
   ctx.arc(sx - eyeOff + Math.cos(facing) * 3, eyeY + Math.sin(facing) * 2, 2.5, 0, Math.PI * 2);
   ctx.arc(sx + eyeOff + Math.cos(facing) * 3, eyeY + Math.sin(facing) * 2, 2.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // Hat
   if (isPlayer) {
     ctx.fillStyle = '#2d6abf';
     ctx.fillRect(sx - r * 0.5, sy - r * 1.2, r, r * 0.4);
@@ -764,36 +873,28 @@ function drawCharacter(x, y, r, color, facing, isPlayer, invuln, hpRatio, ammo, 
     ctx.fill();
   }
 
-  // ── Ammo dots above character ──
+  // Ammo dots above head
   if (ammo !== undefined) {
     const dotY = sy - r * 1.9 - (isPlayer ? 6 : 0);
     const dotSpacing = 7;
     const totalW = (MAX_AMMO - 1) * dotSpacing;
     const startX = sx - totalW / 2;
-
     for (let i = 0; i < MAX_AMMO; i++) {
-      const dx = startX + i * dotSpacing;
+      const ddx = startX + i * dotSpacing;
       if (i < ammo) {
-        // Full dot: solid bright white snowball
         ctx.fillStyle = '#fff';
         ctx.shadowColor = 'rgba(200,230,255,0.8)';
         ctx.shadowBlur = 4;
-        ctx.beginPath();
-        ctx.arc(dx, dotY, 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(ddx, dotY, 3, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
       } else {
-        // Empty dot: dim ring
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(dx, dotY, 2.5, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(ddx, dotY, 2.5, 0, Math.PI * 2); ctx.stroke();
       }
     }
   }
 
-  // HP bar for enemies
   if (!isPlayer && hpRatio < 1) {
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fillRect(sx - 15, sy - r * 1.8, 30, 4);
@@ -801,17 +902,14 @@ function drawCharacter(x, y, r, color, facing, isPlayer, invuln, hpRatio, ammo, 
     ctx.fillRect(sx - 15, sy - r * 1.8, 30 * hpRatio, 4);
   }
 
-  // Charging circle (reloading indicator)
   if (chargeProgress > 0 && ammo < MAX_AMMO) {
-    const cColor = isPlayer ? 'rgba(180,220,255,0.6)' : 'rgba(255,180,180,0.5)';
-    ctx.strokeStyle = cColor;
+    ctx.strokeStyle = isPlayer ? 'rgba(180,220,255,0.6)' : 'rgba(255,180,180,0.5)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(sx, sy, r + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * chargeProgress);
     ctx.stroke();
   }
 
-  // "Reload" text for enemies
   if (!isPlayer && isReloading) {
     ctx.fillStyle = 'rgba(255,200,150,0.8)';
     ctx.font = '700 9px "M PLUS Rounded 1c", sans-serif';
@@ -821,91 +919,65 @@ function drawCharacter(x, y, r, color, facing, isPlayer, invuln, hpRatio, ammo, 
 }
 
 function drawItem(it) {
-  const sx = it.x - cameraX;
-  const sy = it.y - cameraY;
+  const sx = it.x - cameraX, sy = it.y - cameraY;
   const t = Date.now() / 1000;
   const bob = Math.sin(t * 3 + it.x) * 4;
-
   if (it.life < 120 && Math.floor(it.life / 8) % 2 === 0) return;
 
   ctx.fillStyle = 'rgba(68,221,136,0.15)';
-  ctx.beginPath();
-  ctx.arc(sx, sy + bob, 18, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(sx, sy + bob, 18, 0, Math.PI * 2); ctx.fill();
 
   ctx.fillStyle = HEAL_COLOR;
-  ctx.shadowColor = HEAL_COLOR;
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = HEAL_COLOR; ctx.shadowBlur = 10;
   const s = 5;
   ctx.fillRect(sx - s, sy + bob - s * 2.5, s * 2, s * 5);
   ctx.fillRect(sx - s * 2.5, sy + bob - s, s * 5, s * 2);
   ctx.shadowBlur = 0;
 
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
   ctx.strokeRect(sx - s, sy + bob - s * 2.5, s * 2, s * 5);
   ctx.strokeRect(sx - s * 2.5, sy + bob - s, s * 5, s * 2);
 }
 
 function drawTree(t) {
-  const sx = t.x - cameraX;
-  const sy = t.y - cameraY;
-  const s = t.size;
+  const sx = t.x - cameraX, sy = t.y - cameraY, s = t.size;
 
   ctx.fillStyle = 'rgba(0,0,0,0.08)';
-  ctx.beginPath();
-  ctx.ellipse(sx, sy + s * 0.1, s * 0.5, s * 0.15, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(sx, sy + s * 0.1, s * 0.5, s * 0.15, 0, 0, Math.PI * 2); ctx.fill();
 
   ctx.fillStyle = '#5a3a1a';
   ctx.fillRect(sx - 3, sy - s * 0.3, 6, s * 0.4);
 
   const green = t.shade > 0.5 ? TREE_GREEN : TREE_DARK;
   for (let i = 0; i < 3; i++) {
-    const w = s * (0.7 - i * 0.15);
-    const h = s * 0.45;
+    const w = s * (0.7 - i * 0.15), h = s * 0.45;
     const ty = sy - s * 0.3 - i * s * 0.3;
     ctx.fillStyle = green;
-    ctx.beginPath();
-    ctx.moveTo(sx, ty - h);
-    ctx.lineTo(sx - w, ty);
-    ctx.lineTo(sx + w, ty);
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx, ty - h); ctx.lineTo(sx - w, ty); ctx.lineTo(sx + w, ty); ctx.fill();
   }
 
   ctx.fillStyle = '#e8f0f8';
   for (let i = 0; i < 3; i++) {
     const w = s * (0.5 - i * 0.12);
     const ty = sy - s * 0.3 - i * s * 0.3;
-    ctx.beginPath();
-    ctx.moveTo(sx, ty - s * 0.45);
-    ctx.lineTo(sx - w * 0.6, ty - s * 0.2);
-    ctx.lineTo(sx + w * 0.6, ty - s * 0.2);
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx, ty - s * 0.45); ctx.lineTo(sx - w * 0.6, ty - s * 0.2); ctx.lineTo(sx + w * 0.6, ty - s * 0.2); ctx.fill();
   }
 }
 
 function drawSnowball(b, color) {
-  const sx = b.x - cameraX;
-  const sy = b.y - cameraY;
+  const sx = b.x - cameraX, sy = b.y - cameraY;
   ctx.fillStyle = '#fff';
-  ctx.shadowColor = color || 'rgba(200,220,255,0.5)';
-  ctx.shadowBlur = 8;
-  ctx.beginPath();
-  ctx.arc(sx, sy, b.r, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.shadowColor = color; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.arc(sx, sy, b.r, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 0;
 }
 
 function draw() {
-  const W = canvas.width;
-  const H = canvas.height;
+  const W = canvas.width, H = canvas.height;
 
   const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, SKY_TOP);
-  grad.addColorStop(1, SKY_BOT);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+  grad.addColorStop(0, SKY_TOP); grad.addColorStop(1, SKY_BOT);
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 
   if (state === 'menu') return;
 
@@ -917,17 +989,13 @@ function draw() {
     for (let gy = 0; gy < WORLD_H; gy += 40) {
       const sx = gx - cameraX + ((gx * 7 + gy * 13) % 30 - 15);
       const sy = gy - cameraY + ((gx * 11 + gy * 3) % 30 - 15);
-      ctx.beginPath();
-      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fill();
     }
   }
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 3;
   ctx.strokeRect(-cameraX, -cameraY, WORLD_W, WORLD_H);
 
-  // Sort drawables by y
   const drawables = [];
   for (const t of trees) drawables.push({ type: 'tree', y: t.y, data: t });
   for (const it of items) drawables.push({ type: 'item', y: it.y, data: it });
@@ -941,8 +1009,7 @@ function draw() {
     else if (d.type === 'player') {
       const cp = (!isPlayerMoving() && player.ammo < MAX_AMMO) ? player.chargeTimer / CHARGE_TIME : 0;
       drawCharacter(d.data.x, d.data.y, d.data.r, PLAYER_COLOR, d.data.facing, true, d.data.invuln, 1, d.data.ammo, false, cp);
-    }
-    else if (d.type === 'enemy') {
+    } else if (d.type === 'enemy') {
       const e = d.data;
       const cp = (e.state === 'reload' || (e.ammo < MAX_AMMO && e.chargeTimer > 0)) ? e.chargeTimer / CHARGE_TIME : 0;
       drawCharacter(e.x, e.y, e.r, ENEMY_COLOR, e.facing, false, 0, e.hp / e.maxHp, e.ammo, e.state === 'reload', cp);
@@ -955,9 +1022,7 @@ function draw() {
   for (const p of particles) {
     ctx.globalAlpha = p.life / 35;
     ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x - cameraX, p.y - cameraY, p.r * (p.life / 35), 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x - cameraX, p.y - cameraY, p.r * (p.life / 35), 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
 
@@ -966,9 +1031,7 @@ function draw() {
   for (let i = 0; i < 80; i++) {
     const sx = ((i * 137.5 + t * (20 + i % 10)) % (W + 100)) - 50;
     const sy = ((i * 97.3 + t * (30 + i % 15)) % (H + 100)) - 50;
-    ctx.beginPath();
-    ctx.arc(sx, sy, 1 + (i % 3), 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, sy, 1 + (i % 3), 0, Math.PI * 2); ctx.fill();
   }
 
   if (enemies.length === 0 && waveTimer > 0 && waveTimer < 60) {
@@ -977,9 +1040,14 @@ function draw() {
     ctx.textAlign = 'center';
     ctx.fillText(`ウェーブ ${wave + 1} 準備...`, W / 2, H / 2 - 40);
   }
+
+  // Paused dim overlay (draw keeps running for snow effect)
+  if (state === 'paused') {
+    ctx.fillStyle = 'rgba(11,22,40,0.4)';
+    ctx.fillRect(0, 0, W, H);
+  }
 }
 
-// Helper for draw to check if player is moving
 function isPlayerMoving() {
   let dx = 0, dy = 0;
   if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
@@ -990,7 +1058,6 @@ function isPlayerMoving() {
   return Math.hypot(dx, dy) > 0.1;
 }
 
-// ─── Game Loop ────────────────────────────────────────
 function loop() {
   update();
   draw();
@@ -1003,46 +1070,27 @@ function fireAtNearest() {
   let a = player.facing;
   if (enemies.length > 0) {
     let nearest = enemies[0], nd = dist(player, enemies[0]);
-    for (const en of enemies) {
-      const d = dist(player, en);
-      if (d < nd) { nearest = en; nd = d; }
-    }
+    for (const en of enemies) { const d = dist(player, en); if (d < nd) { nearest = en; nd = d; } }
     a = angle(player, nearest);
     player.facing = a;
   }
-  snowballs.push({
-    x: player.x, y: player.y,
-    vx: Math.cos(a) * SNOWBALL_SPEED,
-    vy: Math.sin(a) * SNOWBALL_SPEED,
-    r: 5, life: 90
-  });
-  player.ammo--;
-  player.chargeTimer = 0;
-  player.cooldown = 12;
+  snowballs.push({ x: player.x, y: player.y, vx: Math.cos(a) * SNOWBALL_SPEED, vy: Math.sin(a) * SNOWBALL_SPEED, r: 5, life: 90 });
+  player.ammo--; player.chargeTimer = 0; player.cooldown = 12;
   spawnParticles(player.x + Math.cos(a) * 15, player.y + Math.sin(a) * 15, '#cde8ff', 3);
 }
 
 function fireSnowball(targetX, targetY) {
   if (state !== 'playing' || player.cooldown > 0 || player.ammo <= 0) return;
   const a = angle(player, { x: targetX + cameraX, y: targetY + cameraY });
-  snowballs.push({
-    x: player.x, y: player.y,
-    vx: Math.cos(a) * SNOWBALL_SPEED,
-    vy: Math.sin(a) * SNOWBALL_SPEED,
-    r: 5, life: 90
-  });
-  player.ammo--;
-  player.chargeTimer = 0;
-  player.cooldown = 12;
+  snowballs.push({ x: player.x, y: player.y, vx: Math.cos(a) * SNOWBALL_SPEED, vy: Math.sin(a) * SNOWBALL_SPEED, r: 5, life: 90 });
+  player.ammo--; player.chargeTimer = 0; player.cooldown = 12;
   spawnParticles(player.x + Math.cos(a) * 15, player.y + Math.sin(a) * 15, '#cde8ff', 3);
 }
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
-  if (e.code === 'Space') {
-    e.preventDefault();
-    fireAtNearest();
-  }
+  if (e.code === 'Space') { e.preventDefault(); fireAtNearest(); }
+  if (e.code === 'Escape') togglePause();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
@@ -1059,53 +1107,46 @@ const knob = document.getElementById('joystick-knob');
 let joystickActive = false;
 
 if (joystick) {
-  joystick.addEventListener('touchstart', e => {
-    e.preventDefault(); e.stopPropagation();
-    joystickActive = true;
-  }, { passive: false });
-
+  joystick.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); joystickActive = true; }, { passive: false });
   joystick.addEventListener('touchmove', e => {
     e.preventDefault(); e.stopPropagation();
     if (!joystickActive) return;
     const rect = joystick.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
+    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
     const touch = e.touches[0];
-    let dx = (touch.clientX - cx) / (rect.width / 2);
-    let dy = (touch.clientY - cy) / (rect.height / 2);
+    let dx = (touch.clientX - cx) / (rect.width / 2), dy = (touch.clientY - cy) / (rect.height / 2);
     const m = Math.hypot(dx, dy);
     if (m > 1) { dx /= m; dy /= m; }
     joystickDx = dx; joystickDy = dy;
     knob.style.transform = `translate(calc(-50% + ${dx * 30}px), calc(-50% + ${dy * 30}px))`;
   }, { passive: false });
-
-  const resetJoystick = () => {
-    joystickActive = false;
-    joystickDx = 0; joystickDy = 0;
-    knob.style.transform = 'translate(-50%, -50%)';
-  };
+  const resetJoystick = () => { joystickActive = false; joystickDx = 0; joystickDy = 0; knob.style.transform = 'translate(-50%, -50%)'; };
   joystick.addEventListener('touchend', resetJoystick);
   joystick.addEventListener('touchcancel', resetJoystick);
 }
 
 const fireBtn = document.getElementById('fire-btn');
 if (fireBtn) {
-  fireBtn.addEventListener('touchstart', e => {
-    e.preventDefault(); e.stopPropagation();
-    fireAtNearest();
-  }, { passive: false });
+  fireBtn.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); fireAtNearest(); }, { passive: false });
 }
 
-document.getElementById('start-btn').addEventListener('click', () => {
+// ─── Start / Retry ────────────────────────────────────
+function startGame() {
   document.getElementById('start-screen').style.display = 'none';
   document.getElementById('hud').style.display = 'flex';
+  document.getElementById('pause-btn').style.display = 'flex';
+  if (isMobile) document.getElementById('mobile-controls').style.display = 'block';
   state = 'playing';
   initGame();
-});
+}
+
+document.getElementById('start-btn').addEventListener('click', startGame);
 
 document.getElementById('retry-btn').addEventListener('click', () => {
   document.getElementById('game-over-screen').style.display = 'none';
   document.getElementById('hud').style.display = 'flex';
+  document.getElementById('pause-btn').style.display = 'flex';
+  if (isMobile) document.getElementById('mobile-controls').style.display = 'block';
   state = 'playing';
   initGame();
 });
