@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⛄ 雪合戦バトル！</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0b1628;
+    overflow: hidden;
+    font-family: 'M PLUS Rounded 1c', sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  canvas { display: block; }
+
+  #ui-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #hud {
+    position: absolute;
+    top: 16px; left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+
+  .hud-box {
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 14px;
+    padding: 8px 16px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    white-space: nowrap;
+  }
+
+  .hud-box .label { font-size: 10px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; }
+  .hud-box .value { font-family: 'Dela Gothic One', sans-serif; font-size: 22px; }
+
+  #hp-bar-outer {
+    width: 140px; height: 14px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  #hp-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #ff4466, #ff6b8a);
+    border-radius: 7px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(255,68,102,0.5);
+  }
+
+  #ammo-display {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    margin-top: 2px;
+  }
+
+  .ammo-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.15);
+    transition: all 0.2s;
+  }
+
+  .ammo-dot.full {
+    background: radial-gradient(circle at 40% 35%, #ffffff, #b8daff);
+    border-color: rgba(255,255,255,0.8);
+    box-shadow: 0 0 8px rgba(180,210,255,0.7), inset 0 -2px 3px rgba(0,0,0,0.1);
+  }
+
+  .ammo-dot.charging {
+    background: rgba(180,210,255,0.25);
+    border-color: rgba(200,220,255,0.5);
+    border-style: dashed;
+    animation: pulse-charge 0.6s ease-in-out infinite;
+  }
+
+  @keyframes pulse-charge {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+
+  #charge-bar-outer {
+    width: 50px; height: 6px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-left: 6px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  #charge-bar-outer.visible { opacity: 1; }
+
+  #charge-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #8ac4ff, #c0e0ff);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.05s linear;
+  }
+
+  #start-screen, #game-over-screen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    z-index: 20;
+  }
+
+  #start-screen {
+    background: radial-gradient(ellipse at 50% 40%, #1a3a5c 0%, #0b1628 70%);
+  }
+
+  #game-over-screen {
+    background: rgba(11,22,40,0.92);
+    backdrop-filter: blur(8px);
+    display: none;
+  }
+
+  .title {
+    font-family: 'Dela Gothic One', sans-serif;
+    font-size: clamp(36px, 8vw, 72px);
+    color: #fff;
+    text-shadow: 0 0 40px rgba(100,180,255,0.4), 0 4px 12px rgba(0,0,0,0.5);
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+  }
+
+  .btn {
+    pointer-events: auto;
+    background: linear-gradient(135deg, #4a9eff, #2d7ae0);
+    color: #fff;
+    border: none;
+    padding: 16px 48px;
+    font-family: 'Dela Gothic One', sans-serif;
+    font-size: 20px;
+    border-radius: 60px;
+    cursor: pointer;
+    box-shadow: 0 4px 24px rgba(74,158,255,0.4), 0 0 60px rgba(74,158,255,0.15);
+    transition: all 0.2s;
+    letter-spacing: 1px;
+  }
+
+  .btn:hover { transform: scale(1.06); box-shadow: 0 6px 32px rgba(74,158,255,0.6); }
+  .btn:active { transform: scale(0.97); }
+
+  .controls-info {
+    margin-top: 28px;
+    color: rgba(255,255,255,0.35);
+    font-size: 12px;
+    text-align: center;
+    line-height: 2;
+  }
+
+  .go-score {
+    font-family: 'Dela Gothic One', sans-serif;
+    font-size: 56px;
+    color: #4a9eff;
+    text-shadow: 0 0 30px rgba(74,158,255,0.5);
+    margin: 16px 0 8px;
+  }
+
+  .go-label { color: rgba(255,255,255,0.5); font-size: 14px; letter-spacing: 2px; }
+
+  .snow-bg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .snowflake {
+    position: absolute;
+    color: rgba(255,255,255,0.3);
+    font-size: 18px;
+    animation: snowfall linear infinite;
+  }
+
+  @keyframes snowfall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(360deg); opacity: 0.2; }
+  }
+
+  #mobile-controls {
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 100%; height: 180px;
+    pointer-events: auto;
+    z-index: 15;
+    display: none;
+  }
+
+  .joystick-area {
+    position: absolute;
+    bottom: 20px; left: 30px;
+    width: 120px; height: 120px;
+    background: rgba(255,255,255,0.08);
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 50%;
+  }
+
+  .joystick-knob {
+    position: absolute;
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    transition: none;
+  }
+
+  .fire-btn {
+    position: absolute;
+    bottom: 30px; right: 40px;
+    width: 80px; height: 80px;
+    background: rgba(255,100,100,0.25);
+    border: 2px solid rgba(255,100,100,0.4);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="ui-overlay">
+  <div id="hud" style="display:none;">
+    <div class="hud-box">
+      <div class="label">HP</div>
+      <div id="hp-bar-outer"><div id="hp-bar-inner" style="width:100%"></div></div>
+    </div>
+    <div class="hud-box">
+      <div class="label">雪玉</div>
+      <div id="ammo-display">
+        <div class="ammo-dot" id="ammo0"></div>
+        <div class="ammo-dot" id="ammo1"></div>
+        <div class="ammo-dot" id="ammo2"></div>
+        <div class="ammo-dot" id="ammo3"></div>
+        <div class="ammo-dot" id="ammo4"></div>
+        <div id="charge-bar-outer"><div id="charge-bar-inner"></div></div>
+      </div>
+    </div>
+    <div class="hud-box">
+      <div class="label">スコア</div>
+      <div class="value" id="score-display">0</div>
+    </div>
+    <div class="hud-box">
+      <div class="label">ウェーブ</div>
+      <div class="value" id="wave-display">1</div>
+    </div>
+  </div>
+</div>
+
+<div id="start-screen">
+  <div class="snow-bg" id="snow-bg"></div>
+  <div class="title">⛄ 雪合戦!</div>
+  <div class="subtitle">SNOWBALL FIGHT</div>
+  <button class="btn" id="start-btn">ゲームスタート</button>
+  <div class="controls-info">
+    矢印キー / WASD：移動<br>
+    スペースキー：最寄りの敵に雪玉を投げる<br>
+    マウスクリック：狙った方向に投げる<br>
+    ⚡ 雪玉は5個まで。止まると丸めて補充！<br>
+    🌲 木に当たると雪玉が弾かれる！<br>
+    💚 敵を倒すと回復アイテムが出ることも！
+  </div>
+</div>
+
+<div id="game-over-screen">
+  <div class="go-label">GAME OVER</div>
+  <div class="go-score" id="final-score">0</div>
+  <div class="go-label" style="margin-bottom:32px">ポイント</div>
+  <button class="btn" id="retry-btn">もう一回</button>
+</div>
+
+<div id="mobile-controls">
+  <div class="joystick-area" id="joystick">
+    <div class="joystick-knob" id="joystick-knob"></div>
+  </div>
+  <div class="fire-btn" id="fire-btn">投げる</div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const snowBg = document.getElementById('snow-bg');
+for (let i = 0; i < 40; i++) {
+  const s = document.createElement('div');
+  s.className = 'snowflake';
+  s.textContent = '❄';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.fontSize = (8 + Math.random() * 16) + 'px';
+  s.style.animationDuration = (4 + Math.random() * 6) + 's';
+  s.style.animationDelay = Math.random() * 6 + 's';
+  snowBg.appendChild(s);
+}
+
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+if (isMobile) document.getElementById('mobile-controls').style.display = 'block';
+
+// ─── Game State ───────────────────────────────────────
+let state = 'menu';
+let player, enemies, snowballs, enemyBalls, particles, trees, items, score, wave, waveTimer;
+let keys = {};
+let mouseX = 0, mouseY = 0;
+let cameraX = 0, cameraY = 0;
+let joystickDx = 0, joystickDy = 0;
+
+const WORLD_W = 2400;
+const WORLD_H = 1800;
+const PLAYER_SPEED = 3.2;
+const SNOWBALL_SPEED = 7;
+const ENEMY_SNOWBALL_SPEED = 4;
+const MAX_AMMO = 5;
+const CHARGE_TIME = 120; // 2s at 60fps
+const HEAL_DROP_CHANCE = 0.3;
+const HEAL_AMOUNT = 25;
+const ITEM_LIFETIME = 600;
+const TREE_HIT_RADIUS = 14; // collision radius for trees
+
+const SKY_TOP = '#0d1f3c';
+const SKY_BOT = '#1a3a5c';
+const GROUND = '#d0e8f5';
+const TREE_GREEN = '#1b5e3b';
+const TREE_DARK = '#134a2e';
+const PLAYER_COLOR = '#4a9eff';
+const ENEMY_COLOR = '#ff5566';
+const HEAL_COLOR = '#44dd88';
+
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function angle(a, b) { return Math.atan2(b.y - a.y, b.x - a.x); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function rand(a, b) { return a + Math.random() * (b - a); }
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: rand(-3, 3), vy: rand(-3, 3),
+      r: rand(2, 5), color, life: rand(15, 35)
+    });
+  }
+}
+
+// Check if snowball hits any tree trunk — returns true if blocked
+function hitsTree(bx, by, br) {
+  for (const t of trees) {
+    if (dist({ x: bx, y: by }, { x: t.x, y: t.y - t.size * 0.1 }) < TREE_HIT_RADIUS + br) {
+      spawnParticles(bx, by, '#fff', 6);
+      return true;
+    }
+  }
+  return false;
+}
+
+function generateTrees() {
+  trees = [];
+  for (let i = 0; i < 60; i++) {
+    trees.push({
+      x: rand(50, WORLD_W - 50),
+      y: rand(50, WORLD_H - 50),
+      size: rand(20, 45),
+      shade: Math.random()
+    });
+  }
+  trees.sort((a, b) => a.y - b.y);
+}
+
+function initGame() {
+  player = {
+    x: WORLD_W / 2, y: WORLD_H / 2,
+    r: 16, hp: 100, maxHp: 100,
+    facing: 0, cooldown: 0, invuln: 0,
+    ammo: MAX_AMMO, chargeTimer: 0
+  };
+  enemies = [];
+  snowballs = [];
+  enemyBalls = [];
+  particles = [];
+  items = [];
+  score = 0;
+  wave = 1;
+  waveTimer = 0;
+  generateTrees();
+  spawnWave();
+}
+
+function spawnWave() {
+  const count = 3 + wave * 2;
+  for (let i = 0; i < count; i++) {
+    let ex, ey;
+    do {
+      ex = rand(60, WORLD_W - 60);
+      ey = rand(60, WORLD_H - 60);
+    } while (dist({ x: ex, y: ey }, player) < 300);
+
+    enemies.push({
+      x: ex, y: ey, r: 14,
+      hp: 1 + Math.floor(wave / 3),
+      maxHp: 1 + Math.floor(wave / 3),
+      speed: rand(0.8, 1.5 + wave * 0.1),
+      cooldown: rand(40, 120),
+      facing: 0,
+      state: 'approach',
+      strafeDir: Math.random() > 0.5 ? 1 : -1,
+      stateTimer: rand(60, 150),
+      ammo: MAX_AMMO,
+      chargeTimer: 0
+    });
+  }
+}
+
+// ─── Update ───────────────────────────────────────────
+function update() {
+  if (state !== 'playing') return;
+
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+  if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+  if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+  if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+  if (isMobile) { dx = joystickDx; dy = joystickDy; }
+
+  const mag = Math.hypot(dx, dy);
+  const isMoving = mag > 0.1;
+
+  if (isMoving) {
+    player.x += (dx / mag) * PLAYER_SPEED;
+    player.y += (dy / mag) * PLAYER_SPEED;
+  }
+
+  player.x = Math.max(player.r, Math.min(WORLD_W - player.r, player.x));
+  player.y = Math.max(player.r, Math.min(WORLD_H - player.r, player.y));
+
+  const worldMouseX = mouseX + cameraX;
+  const worldMouseY = mouseY + cameraY;
+  player.facing = angle(player, { x: worldMouseX, y: worldMouseY });
+
+  if (player.cooldown > 0) player.cooldown--;
+  if (player.invuln > 0) player.invuln--;
+
+  // Player ammo recharge (standing still only)
+  if (!isMoving && player.ammo < MAX_AMMO) {
+    player.chargeTimer++;
+    if (player.chargeTimer >= CHARGE_TIME) {
+      player.ammo++;
+      player.chargeTimer = 0;
+      spawnParticles(player.x, player.y - 5, '#cde8ff', 5);
+    }
+  } else if (isMoving) {
+    player.chargeTimer = 0;
+  }
+
+  if (keys['Space']) fireAtNearest();
+
+  // Camera
+  cameraX = lerp(cameraX, player.x - canvas.width / 2, 0.08);
+  cameraY = lerp(cameraY, player.y - canvas.height / 2, 0.08);
+
+  // Items pickup
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    it.life--;
+    if (it.life <= 0) { items.splice(i, 1); continue; }
+    if (dist(it, player) < player.r + 14) {
+      if (it.type === 'heal') {
+        player.hp = Math.min(player.maxHp, player.hp + HEAL_AMOUNT);
+        spawnParticles(it.x, it.y, HEAL_COLOR, 12);
+      }
+      items.splice(i, 1);
+    }
+  }
+
+  // ── Enemies AI ──
+  for (const e of enemies) {
+    const d = dist(e, player);
+    const a = angle(e, player);
+    e.facing = a;
+    e.stateTimer--;
+
+    // Is this enemy currently moving?
+    let enemyMoving = false;
+
+    if (e.stateTimer <= 0) {
+      if (e.ammo <= 0) {
+        // Out of ammo → must stop and reload
+        e.state = 'reload';
+        e.stateTimer = CHARGE_TIME;
+      } else if (e.state === 'approach') {
+        e.state = d < 250 ? 'strafe' : 'approach';
+        e.stateTimer = rand(60, 120);
+      } else if (e.state === 'strafe') {
+        e.state = 'throw';
+        e.stateTimer = 30;
+      } else if (e.state === 'reload') {
+        // Done reloading
+        e.state = 'approach';
+        e.stateTimer = rand(80, 160);
+      } else {
+        e.state = 'approach';
+        e.stateTimer = rand(80, 160);
+        e.strafeDir *= -1;
+      }
+    }
+
+    if (e.state === 'approach' && d > 150) {
+      e.x += Math.cos(a) * e.speed;
+      e.y += Math.sin(a) * e.speed;
+      enemyMoving = true;
+    } else if (e.state === 'strafe') {
+      const sa = a + Math.PI / 2 * e.strafeDir;
+      e.x += Math.cos(sa) * e.speed * 0.8;
+      e.y += Math.sin(sa) * e.speed * 0.8;
+      enemyMoving = true;
+    }
+
+    e.x = Math.max(e.r, Math.min(WORLD_W - e.r, e.x));
+    e.y = Math.max(e.r, Math.min(WORLD_H - e.r, e.y));
+
+    // Enemy ammo recharge (standing still only)
+    if (!enemyMoving && e.ammo < MAX_AMMO) {
+      e.chargeTimer++;
+      if (e.chargeTimer >= CHARGE_TIME) {
+        e.ammo++;
+        e.chargeTimer = 0;
+        spawnParticles(e.x, e.y - 5, '#ffcccc', 3);
+      }
+    } else if (enemyMoving) {
+      e.chargeTimer = 0;
+    }
+
+    // Enemy throws
+    e.cooldown--;
+    if (e.cooldown <= 0 && d < 400 && e.ammo > 0 && e.state !== 'reload') {
+      enemyBalls.push({
+        x: e.x, y: e.y,
+        vx: Math.cos(a) * ENEMY_SNOWBALL_SPEED,
+        vy: Math.sin(a) * ENEMY_SNOWBALL_SPEED,
+        r: 5
+      });
+      e.ammo--;
+      e.chargeTimer = 0;
+      e.cooldown = rand(60, 130 - wave * 3);
+      if (e.cooldown < 35) e.cooldown = 35;
+    }
+  }
+
+  // ── Player snowballs ──
+  for (let i = snowballs.length - 1; i >= 0; i--) {
+    const b = snowballs[i];
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life--;
+
+    if (b.life <= 0 || b.x < 0 || b.x > WORLD_W || b.y < 0 || b.y > WORLD_H) {
+      spawnParticles(b.x, b.y, '#fff', 4);
+      snowballs.splice(i, 1);
+      continue;
+    }
+
+    // Tree collision
+    if (hitsTree(b.x, b.y, b.r)) {
+      snowballs.splice(i, 1);
+      continue;
+    }
+
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      if (dist(b, enemies[j]) < enemies[j].r + b.r) {
+        enemies[j].hp--;
+        spawnParticles(b.x, b.y, '#fff', 8);
+        snowballs.splice(i, 1);
+
+        if (enemies[j].hp <= 0) {
+          const ex = enemies[j].x, ey = enemies[j].y;
+          spawnParticles(ex, ey, ENEMY_COLOR, 15);
+          spawnParticles(ex, ey, '#fff', 10);
+          enemies.splice(j, 1);
+          score += 10 * wave;
+          if (Math.random() < HEAL_DROP_CHANCE) {
+            items.push({ x: ex, y: ey, type: 'heal', life: ITEM_LIFETIME, maxLife: ITEM_LIFETIME });
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // ── Enemy snowballs ──
+  for (let i = enemyBalls.length - 1; i >= 0; i--) {
+    const b = enemyBalls[i];
+    b.x += b.vx;
+    b.y += b.vy;
+
+    if (b.x < 0 || b.x > WORLD_W || b.y < 0 || b.y > WORLD_H) {
+      enemyBalls.splice(i, 1);
+      continue;
+    }
+
+    // Tree collision
+    if (hitsTree(b.x, b.y, b.r)) {
+      enemyBalls.splice(i, 1);
+      continue;
+    }
+
+    if (player.invuln <= 0 && dist(b, player) < player.r + b.r) {
+      player.hp -= 10;
+      player.invuln = 30;
+      spawnParticles(player.x, player.y, PLAYER_COLOR, 10);
+      enemyBalls.splice(i, 1);
+      if (player.hp <= 0) {
+        state = 'gameover';
+        document.getElementById('game-over-screen').style.display = 'flex';
+        document.getElementById('final-score').textContent = score;
+        document.getElementById('hud').style.display = 'none';
+      }
+    }
+  }
+
+  // Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.95; p.vy *= 0.95;
+    p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Wave check
+  if (enemies.length === 0) {
+    waveTimer++;
+    if (waveTimer > 90) {
+      wave++;
+      waveTimer = 0;
+      spawnWave();
+    }
+  }
+
+  // HUD
+  document.getElementById('hp-bar-inner').style.width = Math.max(0, player.hp / player.maxHp * 100) + '%';
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('wave-display').textContent = wave;
+
+  for (let i = 0; i < MAX_AMMO; i++) {
+    const dot = document.getElementById('ammo' + i);
+    dot.className = 'ammo-dot';
+    if (i < player.ammo) {
+      dot.classList.add('full');
+    } else if (i === player.ammo && !isMoving && player.ammo < MAX_AMMO) {
+      dot.classList.add('charging');
+    }
+  }
+
+  const chargeOuter = document.getElementById('charge-bar-outer');
+  const chargeInner = document.getElementById('charge-bar-inner');
+  if (!isMoving && player.ammo < MAX_AMMO) {
+    chargeOuter.classList.add('visible');
+    chargeInner.style.width = (player.chargeTimer / CHARGE_TIME * 100) + '%';
+  } else {
+    chargeOuter.classList.remove('visible');
+    chargeInner.style.width = '0%';
+  }
+}
+
+// ─── Draw ─────────────────────────────────────────────
+function drawCharacter(x, y, r, color, facing, isPlayer, invuln, hpRatio, ammo, isReloading, chargeProgress) {
+  const sx = x - cameraX;
+  const sy = y - cameraY;
+
+  if (invuln > 0 && Math.floor(invuln / 3) % 2 === 0) return;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + r + 4, r * 1.1, r * 0.35, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = '#f0f4f8';
+  ctx.beginPath();
+  ctx.arc(sx, sy + 4, r * 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#f8fbff';
+  ctx.beginPath();
+  ctx.arc(sx, sy - r * 0.5, r * 0.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Scarf
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(sx, sy - r * 0.1, r * 0.55, -0.3, Math.PI + 0.3);
+  ctx.stroke();
+
+  // Eyes
+  const eyeOff = r * 0.22;
+  const eyeY = sy - r * 0.55;
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.arc(sx - eyeOff + Math.cos(facing) * 3, eyeY + Math.sin(facing) * 2, 2.5, 0, Math.PI * 2);
+  ctx.arc(sx + eyeOff + Math.cos(facing) * 3, eyeY + Math.sin(facing) * 2, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hat
+  if (isPlayer) {
+    ctx.fillStyle = '#2d6abf';
+    ctx.fillRect(sx - r * 0.5, sy - r * 1.2, r, r * 0.4);
+    ctx.fillRect(sx - r * 0.35, sy - r * 1.55, r * 0.7, r * 0.4);
+  } else {
+    ctx.fillStyle = '#cc3344';
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - r * 1.5);
+    ctx.lineTo(sx - r * 0.4, sy - r * 0.85);
+    ctx.lineTo(sx + r * 0.4, sy - r * 0.85);
+    ctx.fill();
+  }
+
+  // ── Ammo dots above character ──
+  if (ammo !== undefined) {
+    const dotY = sy - r * 1.9 - (isPlayer ? 6 : 0);
+    const dotSpacing = 7;
+    const totalW = (MAX_AMMO - 1) * dotSpacing;
+    const startX = sx - totalW / 2;
+
+    for (let i = 0; i < MAX_AMMO; i++) {
+      const dx = startX + i * dotSpacing;
+      if (i < ammo) {
+        // Full dot: solid bright white snowball
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = 'rgba(200,230,255,0.8)';
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(dx, dotY, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        // Empty dot: dim ring
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(dx, dotY, 2.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // HP bar for enemies
+  if (!isPlayer && hpRatio < 1) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(sx - 15, sy - r * 1.8, 30, 4);
+    ctx.fillStyle = '#ff5566';
+    ctx.fillRect(sx - 15, sy - r * 1.8, 30 * hpRatio, 4);
+  }
+
+  // Charging circle (reloading indicator)
+  if (chargeProgress > 0 && ammo < MAX_AMMO) {
+    const cColor = isPlayer ? 'rgba(180,220,255,0.6)' : 'rgba(255,180,180,0.5)';
+    ctx.strokeStyle = cColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy, r + 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * chargeProgress);
+    ctx.stroke();
+  }
+
+  // "Reload" text for enemies
+  if (!isPlayer && isReloading) {
+    ctx.fillStyle = 'rgba(255,200,150,0.8)';
+    ctx.font = '700 9px "M PLUS Rounded 1c", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('装填中', sx, sy + r + 18);
+  }
+}
+
+function drawItem(it) {
+  const sx = it.x - cameraX;
+  const sy = it.y - cameraY;
+  const t = Date.now() / 1000;
+  const bob = Math.sin(t * 3 + it.x) * 4;
+
+  if (it.life < 120 && Math.floor(it.life / 8) % 2 === 0) return;
+
+  ctx.fillStyle = 'rgba(68,221,136,0.15)';
+  ctx.beginPath();
+  ctx.arc(sx, sy + bob, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = HEAL_COLOR;
+  ctx.shadowColor = HEAL_COLOR;
+  ctx.shadowBlur = 10;
+  const s = 5;
+  ctx.fillRect(sx - s, sy + bob - s * 2.5, s * 2, s * 5);
+  ctx.fillRect(sx - s * 2.5, sy + bob - s, s * 5, s * 2);
+  ctx.shadowBlur = 0;
+
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(sx - s, sy + bob - s * 2.5, s * 2, s * 5);
+  ctx.strokeRect(sx - s * 2.5, sy + bob - s, s * 5, s * 2);
+}
+
+function drawTree(t) {
+  const sx = t.x - cameraX;
+  const sy = t.y - cameraY;
+  const s = t.size;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + s * 0.1, s * 0.5, s * 0.15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#5a3a1a';
+  ctx.fillRect(sx - 3, sy - s * 0.3, 6, s * 0.4);
+
+  const green = t.shade > 0.5 ? TREE_GREEN : TREE_DARK;
+  for (let i = 0; i < 3; i++) {
+    const w = s * (0.7 - i * 0.15);
+    const h = s * 0.45;
+    const ty = sy - s * 0.3 - i * s * 0.3;
+    ctx.fillStyle = green;
+    ctx.beginPath();
+    ctx.moveTo(sx, ty - h);
+    ctx.lineTo(sx - w, ty);
+    ctx.lineTo(sx + w, ty);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#e8f0f8';
+  for (let i = 0; i < 3; i++) {
+    const w = s * (0.5 - i * 0.12);
+    const ty = sy - s * 0.3 - i * s * 0.3;
+    ctx.beginPath();
+    ctx.moveTo(sx, ty - s * 0.45);
+    ctx.lineTo(sx - w * 0.6, ty - s * 0.2);
+    ctx.lineTo(sx + w * 0.6, ty - s * 0.2);
+    ctx.fill();
+  }
+}
+
+function drawSnowball(b, color) {
+  const sx = b.x - cameraX;
+  const sy = b.y - cameraY;
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = color || 'rgba(200,220,255,0.5)';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(sx, sy, b.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function draw() {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, SKY_TOP);
+  grad.addColorStop(1, SKY_BOT);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  if (state === 'menu') return;
+
+  ctx.fillStyle = GROUND;
+  ctx.fillRect(-cameraX, -cameraY, WORLD_W, WORLD_H);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  for (let gx = 0; gx < WORLD_W; gx += 40) {
+    for (let gy = 0; gy < WORLD_H; gy += 40) {
+      const sx = gx - cameraX + ((gx * 7 + gy * 13) % 30 - 15);
+      const sy = gy - cameraY + ((gx * 11 + gy * 3) % 30 - 15);
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(-cameraX, -cameraY, WORLD_W, WORLD_H);
+
+  // Sort drawables by y
+  const drawables = [];
+  for (const t of trees) drawables.push({ type: 'tree', y: t.y, data: t });
+  for (const it of items) drawables.push({ type: 'item', y: it.y, data: it });
+  drawables.push({ type: 'player', y: player.y, data: player });
+  for (const e of enemies) drawables.push({ type: 'enemy', y: e.y, data: e });
+  drawables.sort((a, b) => a.y - b.y);
+
+  for (const d of drawables) {
+    if (d.type === 'tree') drawTree(d.data);
+    else if (d.type === 'item') drawItem(d.data);
+    else if (d.type === 'player') {
+      const cp = (!isPlayerMoving() && player.ammo < MAX_AMMO) ? player.chargeTimer / CHARGE_TIME : 0;
+      drawCharacter(d.data.x, d.data.y, d.data.r, PLAYER_COLOR, d.data.facing, true, d.data.invuln, 1, d.data.ammo, false, cp);
+    }
+    else if (d.type === 'enemy') {
+      const e = d.data;
+      const cp = (e.state === 'reload' || (e.ammo < MAX_AMMO && e.chargeTimer > 0)) ? e.chargeTimer / CHARGE_TIME : 0;
+      drawCharacter(e.x, e.y, e.r, ENEMY_COLOR, e.facing, false, 0, e.hp / e.maxHp, e.ammo, e.state === 'reload', cp);
+    }
+  }
+
+  for (const b of snowballs) drawSnowball(b, 'rgba(100,180,255,0.5)');
+  for (const b of enemyBalls) drawSnowball(b, 'rgba(255,100,100,0.5)');
+
+  for (const p of particles) {
+    ctx.globalAlpha = p.life / 35;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x - cameraX, p.y - cameraY, p.r * (p.life / 35), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  const t = Date.now() / 1000;
+  for (let i = 0; i < 80; i++) {
+    const sx = ((i * 137.5 + t * (20 + i % 10)) % (W + 100)) - 50;
+    const sy = ((i * 97.3 + t * (30 + i % 15)) % (H + 100)) - 50;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 1 + (i % 3), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (enemies.length === 0 && waveTimer > 0 && waveTimer < 60) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.min(1, (60 - waveTimer) / 30)})`;
+    ctx.font = '700 28px "Dela Gothic One", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`ウェーブ ${wave + 1} 準備...`, W / 2, H / 2 - 40);
+  }
+}
+
+// Helper for draw to check if player is moving
+function isPlayerMoving() {
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+  if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+  if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+  if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+  if (isMobile) { dx = joystickDx; dy = joystickDy; }
+  return Math.hypot(dx, dy) > 0.1;
+}
+
+// ─── Game Loop ────────────────────────────────────────
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ─── Input ────────────────────────────────────────────
+function fireAtNearest() {
+  if (state !== 'playing' || player.cooldown > 0 || player.ammo <= 0) return;
+  let a = player.facing;
+  if (enemies.length > 0) {
+    let nearest = enemies[0], nd = dist(player, enemies[0]);
+    for (const en of enemies) {
+      const d = dist(player, en);
+      if (d < nd) { nearest = en; nd = d; }
+    }
+    a = angle(player, nearest);
+    player.facing = a;
+  }
+  snowballs.push({
+    x: player.x, y: player.y,
+    vx: Math.cos(a) * SNOWBALL_SPEED,
+    vy: Math.sin(a) * SNOWBALL_SPEED,
+    r: 5, life: 90
+  });
+  player.ammo--;
+  player.chargeTimer = 0;
+  player.cooldown = 12;
+  spawnParticles(player.x + Math.cos(a) * 15, player.y + Math.sin(a) * 15, '#cde8ff', 3);
+}
+
+function fireSnowball(targetX, targetY) {
+  if (state !== 'playing' || player.cooldown > 0 || player.ammo <= 0) return;
+  const a = angle(player, { x: targetX + cameraX, y: targetY + cameraY });
+  snowballs.push({
+    x: player.x, y: player.y,
+    vx: Math.cos(a) * SNOWBALL_SPEED,
+    vy: Math.sin(a) * SNOWBALL_SPEED,
+    r: 5, life: 90
+  });
+  player.ammo--;
+  player.chargeTimer = 0;
+  player.cooldown = 12;
+  spawnParticles(player.x + Math.cos(a) * 15, player.y + Math.sin(a) * 15, '#cde8ff', 3);
+}
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    fireAtNearest();
+  }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
+canvas.addEventListener('mousedown', e => fireSnowball(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  fireSnowball(touch.clientX, touch.clientY);
+}, { passive: false });
+
+const joystick = document.getElementById('joystick');
+const knob = document.getElementById('joystick-knob');
+let joystickActive = false;
+
+if (joystick) {
+  joystick.addEventListener('touchstart', e => {
+    e.preventDefault(); e.stopPropagation();
+    joystickActive = true;
+  }, { passive: false });
+
+  joystick.addEventListener('touchmove', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (!joystickActive) return;
+    const rect = joystick.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const touch = e.touches[0];
+    let dx = (touch.clientX - cx) / (rect.width / 2);
+    let dy = (touch.clientY - cy) / (rect.height / 2);
+    const m = Math.hypot(dx, dy);
+    if (m > 1) { dx /= m; dy /= m; }
+    joystickDx = dx; joystickDy = dy;
+    knob.style.transform = `translate(calc(-50% + ${dx * 30}px), calc(-50% + ${dy * 30}px))`;
+  }, { passive: false });
+
+  const resetJoystick = () => {
+    joystickActive = false;
+    joystickDx = 0; joystickDy = 0;
+    knob.style.transform = 'translate(-50%, -50%)';
+  };
+  joystick.addEventListener('touchend', resetJoystick);
+  joystick.addEventListener('touchcancel', resetJoystick);
+}
+
+const fireBtn = document.getElementById('fire-btn');
+if (fireBtn) {
+  fireBtn.addEventListener('touchstart', e => {
+    e.preventDefault(); e.stopPropagation();
+    fireAtNearest();
+  }, { passive: false });
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+  state = 'playing';
+  initGame();
+});
+
+document.getElementById('retry-btn').addEventListener('click', () => {
+  document.getElementById('game-over-screen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+  state = 'playing';
+  initGame();
+});
+
+loop();
+</script>
+</body>
+</html>
