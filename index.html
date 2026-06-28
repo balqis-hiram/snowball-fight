@@ -212,7 +212,7 @@ const HEAL_DROP_CHANCE = 0.3;
 const SPEED_DROP_CHANCE = 0.15;
 const HEAL_AMOUNT = 25;
 const ITEM_LIFETIME = 600;
-const TREE_HIT_RADIUS = 14;
+const TREE_HIT_RADIUS = 22; // match visual foliage width
 
 const SKY_TOP = '#0d1f3c', SKY_BOT = '#1a3a5c', GROUND = '#d0e8f5';
 const TREE_GREEN = '#1b5e3b', TREE_DARK = '#134a2e';
@@ -228,10 +228,29 @@ function spawnParticles(x,y,color,count) {
   for (let i=0;i<count;i++) particles.push({ x,y, vx:rand(-3,3), vy:rand(-3,3), r:rand(2,5), color, life:rand(15,35) });
 }
 
-function hitsTree(bx,by,br) {
+// Swept collision: checks entire path from (bx-vx,by-vy) to (bx,by)
+function hitsTree(bx,by,br,vx,vy) {
+  vx=vx||0; vy=vy||0;
+  const hitR = TREE_HIT_RADIUS + br;
+  const hitR2 = hitR * hitR;
+  const ax=bx-vx, ay=by-vy; // start of segment
+  const segLen2 = vx*vx + vy*vy;
   for (const t of trees) {
-    if (dist({x:bx,y:by},{x:t.x,y:t.y-t.size*0.1}) < TREE_HIT_RADIUS+br) {
-      spawnParticles(bx,by,'#fff',6); return true;
+    const tx=t.x, ty=t.y-t.size*0.1;
+    if (segLen2 < 0.1) {
+      // Stationary — point check
+      const dx=bx-tx, dy=by-ty;
+      if (dx*dx+dy*dy < hitR2) { spawnParticles(bx,by,'#fff',6); return true; }
+      continue;
+    }
+    // Closest point on segment to tree center
+    const fx=ax-tx, fy=ay-ty;
+    let tp = -(fx*vx + fy*vy) / segLen2;
+    tp = Math.max(0, Math.min(1, tp));
+    const cx=ax+tp*vx, cy=ay+tp*vy;
+    const dx2=(cx-tx)*(cx-tx), dy2=(cy-ty)*(cy-ty);
+    if (dx2+dy2 < hitR2) {
+      spawnParticles(cx,cy,'#fff',6); return true;
     }
   }
   return false;
@@ -556,7 +575,7 @@ function update() {
   for (let i=snowballs.length-1;i>=0;i--) {
     const b=snowballs[i]; b.x+=b.vx; b.y+=b.vy; b.life--;
     if (b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H) { spawnParticles(b.x,b.y,'#fff',4); snowballs.splice(i,1); continue; }
-    if (hitsTree(b.x,b.y,b.r)) { snowballs.splice(i,1); continue; }
+    if (hitsTree(b.x,b.y,b.r,b.vx,b.vy)) { snowballs.splice(i,1); continue; }
     for (let j=enemies.length-1;j>=0;j--) {
       if (dist(b,enemies[j])<enemies[j].r+b.r) {
         enemies[j].hp--; spawnParticles(b.x,b.y,'#fff',8); snowballs.splice(i,1);
@@ -578,7 +597,7 @@ function update() {
   for (let i=enemyBalls.length-1;i>=0;i--) {
     const b=enemyBalls[i]; b.x+=b.vx; b.y+=b.vy;
     if (b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H) { enemyBalls.splice(i,1); continue; }
-    if (hitsTree(b.x,b.y,b.r)) { enemyBalls.splice(i,1); continue; }
+    if (hitsTree(b.x,b.y,b.r,b.vx,b.vy)) { enemyBalls.splice(i,1); continue; }
     if (player.invuln<=0 && dist(b,player)<player.r+b.r) {
       player.hp-=10; player.invuln=30; spawnParticles(player.x,player.y,PLAYER_COLOR,10); enemyBalls.splice(i,1);
       if (player.hp<=0) {
